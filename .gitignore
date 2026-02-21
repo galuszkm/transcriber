@@ -1,0 +1,90 @@
+# uv
+/uv.lock
+.req.txt
+data
+.cache
+
+# Test artifacts
+tests/output/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+.virtualenv
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
+
+# Jupyter
+.ipynb_checkpoints
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
+
+# Linting
+.ruff_cache/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+*~
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Secrets baseline (keep tracked, but exclude audit results)
+# .secrets.baseline is intentionally tracked
+
+# WhisperX / ML model caches
+*.pt
+*.bin
+models/
