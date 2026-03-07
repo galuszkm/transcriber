@@ -47,7 +47,12 @@ def init(cache_path: Path | None = None) -> None:
     """
     global _initialized, _cache_dir
 
-    resolved = cache_path.resolve() if cache_path is not None else _default_cache_dir()
+    if cache_path is not None:
+        resolved = cache_path.resolve()
+    elif "CACHE_DIR" in os.environ:
+        resolved = Path(os.environ["CACHE_DIR"]).resolve()
+    else:
+        resolved = _default_cache_dir()
 
     if _initialized and resolved == _cache_dir:
         return
