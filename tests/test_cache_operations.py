@@ -40,7 +40,7 @@ class TestCheckCache:
         (snap / "model.bin").write_bytes(b"\x00")
 
         # No languages to check
-        config = CacheConfig(model="tiny", device="cpu")
+        config = CacheConfig(model="tiny", device="cpu", diarize=False)
         result = _check_cache(config, [])
         assert result == 0
 

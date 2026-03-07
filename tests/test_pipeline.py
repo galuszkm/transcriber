@@ -143,7 +143,9 @@ class TestRunFromAudio:
         assert len(result.segments) == 1
 
     def test_diarize_requires_token(self) -> None:
-        cfg = TranscriptionConfig(compute_type="float32", device="cpu")
+        cfg = TranscriptionConfig(
+            compute_type="float32", device="cpu", hf_token="", diarize=False
+        )
         pipeline = TranscriptionPipeline(cfg)
 
         mock_model = MagicMock()

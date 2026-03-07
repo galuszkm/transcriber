@@ -126,7 +126,7 @@ class TestCacheConfigValidation:
             CacheConfig(device="npu")
 
     def test_languages_empty_returns_empty(self) -> None:
-        cfg = CacheConfig()
+        cfg = CacheConfig(language="")
         assert cfg.languages == []
 
     def test_languages_csv_parsed(self) -> None:
