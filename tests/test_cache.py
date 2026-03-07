@@ -36,11 +36,18 @@ class TestBuildCacheParser:
 
     def test_models_and_languages(self) -> None:
         parser = _build_parser()
-        args = parser.parse_args([
-            "--models", "tiny", "base",
-            "--languages", "en", "de",
-            "--device", "cpu",
-        ])
+        args = parser.parse_args(
+            [
+                "--models",
+                "tiny",
+                "base",
+                "--languages",
+                "en",
+                "de",
+                "--device",
+                "cpu",
+            ]
+        )
         assert args.models == ["tiny", "base"]
         assert args.languages == ["en", "de"]
         assert args.device == "cpu"

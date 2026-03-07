@@ -27,7 +27,11 @@ class TestResolveComputeType:
             assert _resolve_compute_type("cuda") == "float32"
 
     def test_cuda_not_available_returns_float32(self) -> None:
-        mock_torch = type("MockTorch", (), {"cuda": type("C", (), {"is_available": staticmethod(lambda: False)})()})()
+        mock_torch = type(
+            "MockTorch",
+            (),
+            {"cuda": type("C", (), {"is_available": staticmethod(lambda: False)})()},
+        )()
         with patch.dict("sys.modules", {"torch": mock_torch}):
             assert _resolve_compute_type("cuda") == "float32"
 
@@ -62,9 +66,7 @@ class TestTranscriptionConfigValidation:
 
     def test_diarize_without_token_raises(self) -> None:
         with pytest.raises(ValueError, match="HuggingFace token"):
-            TranscriptionConfig(
-                diarize=True, hf_token=None, compute_type="float32"
-            )
+            TranscriptionConfig(diarize=True, hf_token=None, compute_type="float32")
 
     def test_diarize_with_token_ok(self) -> None:
         cfg = TranscriptionConfig(
@@ -124,7 +126,7 @@ class TestCacheConfigValidation:
             CacheConfig(device="npu")
 
     def test_languages_empty_returns_empty(self) -> None:
-        cfg = CacheConfig()
+        cfg = CacheConfig(language="")
         assert cfg.languages == []
 
     def test_languages_csv_parsed(self) -> None:

@@ -21,9 +21,7 @@ def _make_result() -> TranscriptResult:
             TranscriptSegment(
                 start=0.0, end=1.5, text="Hello world", speaker="SPEAKER_00"
             ),
-            TranscriptSegment(
-                start=1.5, end=3.0, text="Goodbye", speaker="SPEAKER_01"
-            ),
+            TranscriptSegment(start=1.5, end=3.0, text="Goodbye", speaker="SPEAKER_01"),
         ],
         duration=3.0,
         timings={"transcribe": 1.2},
@@ -130,6 +128,6 @@ class TestUTF8JSONResponse:
 
     def test_non_ascii_not_escaped(self) -> None:
         resp = UTF8JSONResponse(content={"msg": "Cześć"})
-        body = resp.body.decode("utf-8")
+        body = bytes(resp.body).decode("utf-8")
         assert "Cześć" in body
         assert "\\u" not in body

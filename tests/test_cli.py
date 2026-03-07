@@ -34,18 +34,28 @@ class TestBuildParser:
 
     def test_all_flags(self) -> None:
         parser = build_parser("0.1.0")
-        args = parser.parse_args([
-            "test.wav",
-            "-m", "tiny",
-            "-d", "cpu",
-            "-c", "float32",
-            "-b", "4",
-            "--diarize",
-            "-f", "json",
-            "-o", "out/result",
-            "--hf-token", "hf_abc",
-            "--cache-dir", "/tmp/cache",
-        ])
+        args = parser.parse_args(
+            [
+                "test.wav",
+                "-m",
+                "tiny",
+                "-d",
+                "cpu",
+                "-c",
+                "float32",
+                "-b",
+                "4",
+                "--diarize",
+                "-f",
+                "json",
+                "-o",
+                "out/result",
+                "--hf-token",
+                "hf_abc",
+                "--cache-dir",
+                "/tmp/cache",
+            ]
+        )
         assert args.model == "tiny"
         assert args.device == "cpu"
         assert args.compute_type == "float32"
@@ -86,9 +96,7 @@ class TestFormatTimings:
 
     def test_with_diarize(self) -> None:
         timings = {"model_load": 1, "transcribe": 5, "align": 0.5, "diarize": 3}
-        cfg = TranscriptionConfig(
-            compute_type="float32", diarize=True, hf_token="hf_x"
-        )
+        cfg = TranscriptionConfig(compute_type="float32", diarize=True, hf_token="hf_x")
         result = _format_timings(timings, cfg)
         assert "Diarize 3.0s" in result
 

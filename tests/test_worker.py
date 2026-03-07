@@ -55,6 +55,7 @@ class TestSendSSE:
         InferenceWorker._send_sse(queue, "error", evt)
         assert queue.qsize() == 2
         frame = queue.get_nowait()
+        assert frame is not None
         assert "error" in frame
         assert "boom" in frame
         sentinel = queue.get_nowait()
