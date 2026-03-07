@@ -463,4 +463,3 @@ uv run just test         # run the test suite with coverage
 | `uv run just format` | Auto-format code (imports + source) |
 | `uv run just clean` | Remove build/cache/coverage artifacts |
 | `uv run just commit-files` | Create a conventional commit interactively |
-
