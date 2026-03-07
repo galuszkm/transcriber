@@ -1,12 +1,17 @@
-"""Audio file loading and validation.
+"""Audio file loading, validation, and decoding.
 
 Validates input audio files (existence, format) and decodes them
 to 16 kHz mono float32 NumPy arrays via PyAV — a production-grade
 Python binding to FFmpeg's C libraries.
+
+The core decoding helpers (:func:`decode_stream`, :func:`decode_bytes`)
+are also used by the server's in-memory audio decode path, keeping
+the PyAV resampling logic in one place.
 """
 
 from __future__ import annotations
 
+import io
 from pathlib import Path
 
 import av
@@ -76,60 +81,48 @@ def load_audio(file_path: Path) -> np.ndarray:
         RuntimeError: If audio decoding fails.
     """
     validated = validate_audio_file(file_path)
-    return _decode_with_pyav(validated)
-
-
-def _decode_with_pyav(path: Path) -> np.ndarray:
-    """Decode *path* into a 16 kHz mono float32 array via PyAV.
-
-    Args:
-        path: Validated audio file path.
-
-    Returns:
-        Concatenated float32 audio samples.
-
-    Raises:
-        RuntimeError: On empty audio or decoding failure.
-    """
     try:
-        container = av.open(str(path))
-        resampler = av.AudioResampler(
-            format="fltp",
-            layout="mono",
-            rate=SAMPLE_RATE,
-        )
-
-        chunks: list[np.ndarray] = _extract_chunks(container, resampler)
-        container.close()
-
-        if not chunks:
-            msg = f"No audio data decoded from '{path}'"
-            raise RuntimeError(msg)
-
-        return np.concatenate(chunks).astype(np.float32)
-
+        return decode_stream(av.open(str(validated)), source=str(validated))
     except (RuntimeError, ValueError):
         raise
     except Exception as exc:
-        msg = f"Failed to load audio from '{path}': {exc}"
+        msg = f"Failed to load audio from '{validated}': {exc}"
         raise RuntimeError(msg) from exc
 
 
-def _extract_chunks(
+# ---------------------------------------------------------------------------
+# Core decoding (shared between file-based and in-memory paths)
+# ---------------------------------------------------------------------------
+
+
+def decode_stream(
     container: av.container.InputContainer,
-    resampler: av.AudioResampler,
-) -> list[np.ndarray]:
-    """Decode and resample all frames from *container*.
+    *,
+    source: str = "<stream>",
+) -> np.ndarray:
+    """Decode an open PyAV container to a 16 kHz mono float32 array.
+
+    This is the single implementation of the PyAV → NumPy decoding
+    pipeline used by both the file-based :func:`load_audio` and the
+    server's :func:`decode_bytes` paths.
 
     Args:
         container: Open PyAV input container.
-        resampler: Configured 16 kHz mono resampler.
+        source: Human-readable label for error messages.
 
     Returns:
-        List of float32 NumPy chunk arrays.
-    """
-    chunks: list[np.ndarray] = []
+        1-D ``float32`` NumPy array of audio samples at 16 kHz.
 
+    Raises:
+        RuntimeError: If no audio data could be decoded.
+    """
+    resampler = av.AudioResampler(
+        format="fltp",
+        layout="mono",
+        rate=SAMPLE_RATE,
+    )
+
+    chunks: list[np.ndarray] = []
     for frame in container.decode(audio=0):
         for out_frame in resampler.resample(frame):
             chunks.append(out_frame.to_ndarray()[0])
@@ -138,7 +131,35 @@ def _extract_chunks(
     for out_frame in resampler.resample(None):
         chunks.append(out_frame.to_ndarray()[0])
 
-    return chunks
+    container.close()
+
+    if not chunks:
+        msg = f"No audio data decoded from '{source}'"
+        raise RuntimeError(msg)
+
+    return np.concatenate(chunks).astype(np.float32)
+
+
+def decode_bytes(data: bytes) -> np.ndarray:
+    """Decode raw audio bytes to a 16 kHz mono float32 array.
+
+    Accepts any format that PyAV/FFmpeg can read (WAV, MP3, FLAC,
+    OGG, etc.).  Used by the server for network-received audio.
+
+    Args:
+        data: Raw audio file bytes.
+
+    Returns:
+        1-D ``float32`` NumPy array at 16 kHz.
+
+    Raises:
+        ValueError: If no audio data could be decoded.
+    """
+    container = av.open(io.BytesIO(data), mode="r")
+    try:
+        return decode_stream(container, source="<bytes>")
+    except RuntimeError as exc:
+        raise ValueError(str(exc)) from exc
 
 
 # ---------------------------------------------------------------------------

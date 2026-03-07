@@ -20,7 +20,7 @@ from .parser import build_parser
 
 
 def main(argv: list[str] | None = None) -> int:
-    """CLI entry point for Meeting-Noter.
+    """CLI entry point for transcriber.
 
     Parses arguments, initialises the environment, runs the
     transcription pipeline, and writes the result to disk.
@@ -73,15 +73,18 @@ def _config_from_args(args: object) -> TranscriptionConfig:
     Returns:
         Validated transcription configuration.
     """
-    return TranscriptionConfig(
-        model_size=args.model,  # type: ignore[attr-defined]
-        device=args.device,  # type: ignore[attr-defined]
-        compute_type=args.compute_type,  # type: ignore[attr-defined]
-        language=args.language,  # type: ignore[attr-defined]
-        batch_size=args.batch_size,  # type: ignore[attr-defined]
-        diarize=args.diarize,  # type: ignore[attr-defined]
-        hf_token=args.hf_token,  # type: ignore[attr-defined]
-    )
+    overrides: dict = {
+        "model": args.model,  # type: ignore[attr-defined]
+        "device": args.device,  # type: ignore[attr-defined]
+        "compute_type": args.compute_type,  # type: ignore[attr-defined]
+        "batch_size": args.batch_size,  # type: ignore[attr-defined]
+        "diarize": args.diarize,  # type: ignore[attr-defined]
+    }
+    if args.hf_token is not None:  # type: ignore[attr-defined]
+        overrides["hf_token"] = args.hf_token  # type: ignore[attr-defined]
+    if args.cache_dir is not None:  # type: ignore[attr-defined]
+        overrides["cache_dir"] = args.cache_dir  # type: ignore[attr-defined]
+    return TranscriptionConfig(**overrides)
 
 
 if __name__ == "__main__":

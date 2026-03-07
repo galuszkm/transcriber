@@ -14,6 +14,11 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+# Cache of loaded alignment models keyed by (language, device).
+# Language is detected at runtime, so we populate this lazily and reuse
+# the same model for all subsequent requests in the same language.
+_align_model_cache: dict[tuple[str, str], tuple[Any, Any]] = {}
+
 
 def align_segments(
     audio: np.ndarray,
@@ -22,6 +27,9 @@ def align_segments(
     device: str,
 ) -> list[dict[str, Any]]:
     """Align word-level timestamps using a phoneme model.
+
+    The alignment model for *language* is loaded on the first call and
+    cached for all subsequent calls with the same language.
 
     Falls back to the original unaligned segments when the alignment
     model is unavailable for *language* or when alignment fails for
@@ -43,13 +51,30 @@ def align_segments(
         return raw_segments
 
 
+def _load_align_model(language: str, device: str) -> tuple[Any, Any]:
+    """Return the alignment model for *language*, loading it if needed.
+
+    Results are cached in :data:`_align_model_cache` by ``(language, device)``.
+    """
+    key = (language, device)
+    if key not in _align_model_cache:
+        import whisperx
+
+        logger.info("Loading alignment model for language '%s' on %s", language, device)
+        _align_model_cache[key] = whisperx.load_align_model(
+            language_code=language,
+            device=device,
+        )
+    return _align_model_cache[key]
+
+
 def _run_alignment(
     audio: np.ndarray,
     raw_segments: list[dict[str, Any]],
     language: str,
     device: str,
 ) -> list[dict[str, Any]]:
-    """Execute the WhisperX alignment pass.
+    """Execute the WhisperX alignment pass using a cached model.
 
     Args:
         audio: 16 kHz float32 audio array.
@@ -62,10 +87,7 @@ def _run_alignment(
     """
     import whisperx
 
-    align_model, metadata = whisperx.load_align_model(
-        language_code=language,
-        device=device,
-    )
+    align_model, metadata = _load_align_model(language, device)
     aligned = whisperx.align(
         raw_segments,
         align_model,

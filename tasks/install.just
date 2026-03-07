@@ -11,4 +11,4 @@ install-hooks:
 # install the project with all dependency groups
 [group("install")]
 install-project:
-    uv sync --all-groups
+    uv sync --all-groups --all-extras

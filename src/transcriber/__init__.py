@@ -1,11 +1,17 @@
-"""Meeting-Noter: Local audio transcription tool using WhisperX.
+"""transcriber: Local audio transcription tool using WhisperX.
 
-Public API re-exports for convenient programmatic usage::
+Import from the submodules you need::
 
-    from transcriber import TranscriptionPipeline, TranscriptionConfig
+    from transcriber.core import TranscriptionConfig, TranscriptResult
+    from transcriber.pipeline import TranscriptionPipeline
+    from transcriber.io import OutputFormat, TranscriptWriter
+    from transcriber.client import start_recording, stop_recording, transcribe_rest
 
-    pipeline = TranscriptionPipeline(TranscriptionConfig(device="cuda"))
-    result = pipeline.run(Path("meeting.wav"))
+The heavy ML dependencies are optional.  Install the extras you need::
+
+    pip install transcriber[cli]       # CLI transcription
+    pip install transcriber[server]    # HTTP/WebSocket server
+    pip install transcriber[client]    # Microphone recording client
 
 Package layout::
 
@@ -14,27 +20,23 @@ Package layout::
         io/          - Audio decoding (PyAV), transcript writers
         pipeline/    - Transcription, alignment, diarization
         cli/         - Argument parsing, Rich display, entry point
+        server/      - FastAPI HTTP/WebSocket server
+        client/      - Microphone recording, REST/WS sender
 """
 
-# Initialize environment FIRST, before any other imports that might use NLTK
+import logging
 from importlib.metadata import version
-
-from . import _env
-
-_env.init()
 
 __version__: str = version("transcriber")
 
-from .core.config import TranscriptionConfig  # noqa: E402
-from .core.models import TranscriptResult, TranscriptSegment  # noqa: E402
-from .io.writer import OutputFormat, TranscriptWriter  # noqa: E402
-from .pipeline.transcriber import TranscriptionPipeline  # noqa: E402
+logger = logging.getLogger(__name__)
 
-__all__ = [
-    "OutputFormat",
-    "TranscriptResult",
-    "TranscriptSegment",
-    "TranscriptWriter",
-    "TranscriptionConfig",
-    "TranscriptionPipeline",
-]
+# Initialise environment (cache dirs, logger suppression, TF32)
+# when ML extras are installed.  Silently skipped for client-only installs.
+try:
+    from . import _env
+
+    _env.init()
+except Exception as e:
+    logger.warning("Environment initialization failed: %s", e)
+    pass

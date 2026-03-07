@@ -1,6 +1,6 @@
 # run clean tasks
 [group("clean")]
-clean: clean-build clean-cache clean-coverage clean-coverage-html clean-pytest clean-python clean-ruff clean-requirements
+clean: clean-build clean-coverage clean-coverage-html clean-pytest clean-python clean-ruff clean-requirements
 
 # clean build folders
 [group("clean")]

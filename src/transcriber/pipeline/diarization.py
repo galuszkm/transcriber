@@ -13,6 +13,8 @@ from typing import Any
 
 import numpy as np
 
+from .._env import cache_dir as _default_cache_dir
+
 logger = logging.getLogger(__name__)
 
 
@@ -21,12 +23,39 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
+def load_diarization_pipeline(
+    hf_token: str,
+    device: str,
+    cache_dir: Path | None = None,
+) -> Any:
+    """Load and return the pyannote diarization pipeline.
+
+    This is a slow one-time operation (~18 s on first run when the model
+    is already cached locally).  Call it once at startup and pass the
+    returned object to :func:`diarize_segments` for each request.
+
+    The model is **language-independent** — the same instance handles all
+    languages.
+
+    Args:
+        hf_token: HuggingFace authentication token.
+        device: Compute device (``"cuda"`` or ``"cpu"``).
+        cache_dir: Root cache directory.
+
+    Returns:
+        Loaded :class:`~whisperx.diarize.DiarizationPipeline` instance.
+    """
+    from whisperx.diarize import DiarizationPipeline
+
+    whisperx_cache = (cache_dir or _default_cache_dir()) / "whisperx"
+    return DiarizationPipeline(token=hf_token, device=device, cache_dir=whisperx_cache)
+
+
 def diarize_segments(
     audio: np.ndarray,
     segments: list[dict[str, Any]],
     *,
-    hf_token: str,
-    device: str,
+    pipeline: Any,
 ) -> list[dict[str, Any]]:
     """Run speaker diarization and re-segment by speaker.
 
@@ -38,15 +67,15 @@ def diarize_segments(
 
     Args:
         audio: 16 kHz float32 audio array.
-        segments: Aligned transcription segments.
-        hf_token: HuggingFace authentication token.
-        device: Compute device (``"cuda"`` or ``"cpu"``).
+        segments: Aligned transcription segments (word-level timestamps required).
+        pipeline: Pre-loaded :class:`~whisperx.diarize.DiarizationPipeline`
+            instance from :func:`load_diarization_pipeline`.
 
     Returns:
         Segments with per-speaker labels.
     """
     try:
-        return _run_diarization(audio, segments, hf_token=hf_token, device=device)
+        return _run_diarization(audio, segments, pipeline=pipeline)
     except Exception:
         logger.error(
             "Diarization failed - returning undiarized segments",
@@ -59,30 +88,25 @@ def _run_diarization(
     audio: np.ndarray,
     segments: list[dict[str, Any]],
     *,
-    hf_token: str,
-    device: str,
+    pipeline: Any,
 ) -> list[dict[str, Any]]:
-    """Execute the full diarization pipeline.
+    """Execute the full diarization pipeline using a pre-loaded model.
 
     Args:
         audio: 16 kHz float32 audio array.
         segments: Aligned transcription segments.
-        hf_token: HuggingFace authentication token.
-        device: Compute device string.
+        pipeline: Loaded :class:`~whisperx.diarize.DiarizationPipeline`.
 
     Returns:
         Re-segmented segment list.
     """
     import whisperx
-    from whisperx.diarize import DiarizationPipeline
 
-    cache_dir = Path(__file__).parents[3] / ".cache" / "whisperx"
-    pipeline = DiarizationPipeline(token=hf_token, device=device, cache_dir=cache_dir)
-    diarize_segments = pipeline(audio)
+    diarized = pipeline(audio)
 
-    assigned = whisperx.assign_word_speakers(
-        diarize_segments, {"segments": segments}
-    ).get("segments", segments)
+    assigned = whisperx.assign_word_speakers(diarized, {"segments": segments}).get(
+        "segments", segments
+    )
 
     return resegment_by_speaker(assigned)
 

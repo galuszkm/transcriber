@@ -25,5 +25,5 @@ check-hooks:
 # scan for vulnerabilities in dependencies
 [group("check")]
 check-audit:
-    uv sync --all-groups
+    uv sync --all-groups --all-extras
     uv run pip-audit --local --skip-editable

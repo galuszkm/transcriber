@@ -33,11 +33,11 @@ def print_banner(
     console.print(
         Panel(
             f"[bold]Audio:[/]   {audio_path.name}\n"
-            f"[bold]Model:[/]   {config.model_size}\n"
+            f"[bold]Model:[/]   {config.model}\n"
             f"[bold]Device:[/]  {config.device}\n"
             f"[bold]Format:[/]  {fmt}\n"
             f"[bold]Diarize:[/] {'yes' if config.diarize else 'no'}",
-            title="Meeting-Noter",
+            title="transcriber",
             border_style="cyan",
         )
     )
