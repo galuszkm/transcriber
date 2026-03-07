@@ -7,8 +7,8 @@ pydantic-settings from the current working directory.
 
 Cache location is resolved in the following order:
 
-1. ``TRANSCRIBER_CACHE_DIR`` environment variable (if set).
-2. The *cache_dir* argument passed to :func:`init`.
+1. The *cache_dir* argument passed to :func:`init`.
+2. ``CACHE_DIR`` environment variable / ``.env`` (via :class:`~transcriber.core.config.TranscriptionConfig`).
 3. ``<cwd>/.cache`` (default).
 """
 
@@ -34,14 +34,7 @@ def cache_dir() -> Path:
 
 
 def _default_cache_dir() -> Path:
-    """Resolve the default cache directory.
-
-    Uses ``TRANSCRIBER_CACHE_DIR`` env var when set, otherwise
-    ``<cwd>/.cache``.
-    """
-    env = os.environ.get("TRANSCRIBER_CACHE_DIR")
-    if env:
-        return Path(env).resolve()
+    """Return the default cache directory (``<cwd>/.cache``)."""
     return Path.cwd() / ".cache"
 
 
@@ -54,7 +47,12 @@ def init(cache_path: Path | None = None) -> None:
     """
     global _initialized, _cache_dir
 
-    resolved = cache_path.resolve() if cache_path is not None else _default_cache_dir()
+    if cache_path is not None:
+        resolved = cache_path.resolve()
+    elif "CACHE_DIR" in os.environ:
+        resolved = Path(os.environ["CACHE_DIR"]).resolve()
+    else:
+        resolved = _default_cache_dir()
 
     if _initialized and resolved == _cache_dir:
         return

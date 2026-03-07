@@ -70,7 +70,7 @@ def add_pipeline_args(
         default=None,
         help=(
             "Root directory for model and data caches "
-            "(default: TRANSCRIBER_CACHE_DIR env var, then <cwd>/.cache)."
+            "(default: CACHE_DIR env var, then <cwd>/.cache)."
         ),
     )
 
