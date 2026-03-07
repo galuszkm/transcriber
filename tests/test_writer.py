@@ -1,6 +1,7 @@
 """Tests for transcriber.io.writer - rendering and file output."""
 
 from pathlib import Path
+from typing import Any
 
 from transcriber.core.models import TranscriptResult, TranscriptSegment
 from transcriber.io.writer import (
@@ -48,9 +49,9 @@ class TestFormatTimestamp:
 
 def _make_result(
     segments: list[TranscriptSegment] | None = None,
-    **kwargs: object,
+    **kwargs: Any,
 ) -> TranscriptResult:
-    defaults = {
+    defaults: dict[str, Any] = {
         "source_file": "meeting.wav",
         "language": "en",
         "segments": segments or [],
@@ -65,9 +66,7 @@ class TestMarkdownSpeakerBlocks:
 
     def test_consecutive_same_speaker_merged(self) -> None:
         segs = [
-            TranscriptSegment(
-                start=0, end=5, text="Hello world", speaker="SPEAKER_00"
-            ),
+            TranscriptSegment(start=0, end=5, text="Hello world", speaker="SPEAKER_00"),
             TranscriptSegment(
                 start=5, end=10, text="How are you?", speaker="SPEAKER_00"
             ),
@@ -111,9 +110,7 @@ class TestTranscriptWriter:
 
     def test_render_markdown_with_segments(self) -> None:
         segs = [
-            TranscriptSegment(
-                start=0, end=5, text="Hello world", speaker="SPEAKER_00"
-            ),
+            TranscriptSegment(start=0, end=5, text="Hello world", speaker="SPEAKER_00"),
         ]
         writer = TranscriptWriter(OutputFormat.MARKDOWN)
         md = writer.render(_make_result(segs))

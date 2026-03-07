@@ -128,9 +128,7 @@ class TestDownloadDiarization:
         env_mod._initialized = False
         env_mod.init(cache_path=tmp_path)
 
-        config = CacheConfig(
-            diarize=True, hf_token="hf_test", device="cpu"
-        )
+        config = CacheConfig(diarize=True, hf_token="hf_test", device="cpu")
         with patch("transcriber.cli.cache.DiarizationPipeline"):
             assert _download_diarization(config) is True
 
@@ -138,9 +136,7 @@ class TestDownloadDiarization:
         env_mod._initialized = False
         env_mod.init(cache_path=tmp_path)
 
-        config = CacheConfig(
-            diarize=True, hf_token="hf_test", device="cpu"
-        )
+        config = CacheConfig(diarize=True, hf_token="hf_test", device="cpu")
         with patch(
             "transcriber.cli.cache.DiarizationPipeline",
             side_effect=RuntimeError("fail"),

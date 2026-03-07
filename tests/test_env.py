@@ -31,9 +31,7 @@ class TestInit:
         env_mod._initialized = False
         env_mod.init(cache_path=tmp_path)
         assert os.environ["HF_HOME"] == str(tmp_path / "huggingface")
-        assert os.environ["HF_HUB_CACHE"] == str(
-            tmp_path / "huggingface" / "hub"
-        )
+        assert os.environ["HF_HUB_CACHE"] == str(tmp_path / "huggingface" / "hub")
 
     def test_sets_torch_home(self, tmp_path: Path) -> None:
         env_mod._initialized = False

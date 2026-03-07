@@ -29,15 +29,11 @@ class TestPrintBanner:
 
     def test_contains_audio_filename(self) -> None:
         cfg = TranscriptionConfig(compute_type="float32", device="cpu")
-        output = _capture_console(
-            print_banner, Path("meeting.wav"), cfg, "md"
-        )
+        output = _capture_console(print_banner, Path("meeting.wav"), cfg, "md")
         assert "meeting.wav" in output
 
     def test_contains_model_and_device(self) -> None:
-        cfg = TranscriptionConfig(
-            compute_type="float32", device="cpu", model="tiny"
-        )
+        cfg = TranscriptionConfig(compute_type="float32", device="cpu", model="tiny")
         output = _capture_console(print_banner, Path("a.wav"), cfg, "json")
         assert "tiny" in output
         assert "cpu" in output
@@ -63,8 +59,6 @@ class TestPrintSummary:
             timings={"transcribe": 2.0},
         )
         cfg = TranscriptionConfig(compute_type="float32", device="cpu")
-        output = _capture_console(
-            print_summary, result, Path("/out/test.md"), cfg
-        )
+        output = _capture_console(print_summary, result, Path("/out/test.md"), cfg)
         assert "de" in output
         assert "1" in output  # 1 segment

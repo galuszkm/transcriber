@@ -96,11 +96,14 @@ class TestEnsureModel:
         fallback_model = MagicMock()
         mock_wx = MagicMock()
         mock_wx.load_model.return_value = fallback_model
-        with patch.object(
-            pipeline,
-            "_load_model",
-            side_effect=ValueError("float16 is not supported"),
-        ), patch.dict("sys.modules", {"whisperx": mock_wx}):
+        with (
+            patch.object(
+                pipeline,
+                "_load_model",
+                side_effect=ValueError("float16 is not supported"),
+            ),
+            patch.dict("sys.modules", {"whisperx": mock_wx}),
+        ):
             pipeline._ensure_model()
             assert pipeline._model is fallback_model
             assert pipeline.config.compute_type == "float32"
@@ -114,6 +117,7 @@ class TestEnsureModel:
             side_effect=ValueError("some other error"),
         ):
             import pytest
+
             with pytest.raises(ValueError, match="some other error"):
                 pipeline._ensure_model()
 
@@ -150,6 +154,7 @@ class TestRunFromAudio:
         pipeline._model = mock_model
 
         import pytest
+
         audio = np.zeros(16000, dtype=np.float32)
         with pytest.raises(ValueError, match="HuggingFace token"):
             pipeline.run_from_audio(audio, diarize=True)

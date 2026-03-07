@@ -21,7 +21,7 @@ class TestCreateApp:
     def test_router_included(self) -> None:
         cfg = TranscriptionConfig(compute_type="float32", device="cpu")
         app = create_app(cfg)
-        paths = [r.path for r in app.routes]
+        paths = [getattr(r, "path", "") for r in app.routes]
         assert "/health" in paths
 
 

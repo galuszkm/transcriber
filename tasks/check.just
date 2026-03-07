@@ -15,7 +15,7 @@ check-security:
 # check code typing with ty (astral type checker)
 [group("check")]
 check-type:
-    uv run ty check {{SOURCES}}
+    uv run ty check {{SOURCES}} {{TESTS}}
 
 # check pre-commit hooks
 [group("check")]
