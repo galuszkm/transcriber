@@ -14,11 +14,12 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+          cache-dependency-glob: "uv.lock"
 
       - uses: extractions/setup-just@v2
 
       - name: Install dev dependencies
-        run: uv sync --group dev
+        run: uv sync --all-groups --all-extras
 
       - name: Run checks
         run: uv run just check
