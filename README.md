@@ -153,9 +153,6 @@ LANGUAGE=en,pl,de
 
 # Override default cache directory (default: <cwd>/.cache)
 CACHE_DIR=D:\models\cache
-
-# Legacy override (checked when CACHE_DIR is not set)
-TRANSCRIBER_CACHE_DIR=D:\models\cache
 ```
 
 ### Cache directory layout
@@ -264,7 +261,7 @@ uv run trans-cli meeting.mp3 -f json -o ./transcripts/meeting
 | `-b, --batch-size` | Inference batch size | `16` |
 | `--diarize` | Enable speaker diarization | off |
 | `--hf-token` | HuggingFace token (overrides `HF_TOKEN` env var) | from `.env` |
-| `--cache-dir` | Cache directory | `TRANSCRIBER_CACHE_DIR` or `.cache` |
+| `--cache-dir` | Cache directory | `CACHE_DIR` or `.cache` |
 
 ### Supported audio formats
 

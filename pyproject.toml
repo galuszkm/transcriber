@@ -1,3 +1,10 @@
+[project]
+name = "transcriber"
+authors = [{ name = "Michal Galuszka" }]
+version = "0.2.0"
+description = "Audio transcription tool using WhisperX for meeting recordings"
+requires-python = ">=3.11"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -5,20 +12,9 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/transcriber"]
 
-[[tool.uv.index]]
-name = "pytorch-cu128"
-url = "https://download.pytorch.org/whl/cu128"
-explicit = true
-
-[tool.uv.sources]
-torch = [{ index = "pytorch-cu128" }]
-
-[project]
-name = "transcriber"
-authors = [{ name = "Michal Galuszka" }]
-version = "0.2.0"
-description = "Audio transcription tool using WhisperX for meeting recordings"
-requires-python = ">=3.11"
+# ---------------------------------------------------------------------------
+# DEPENDENCIES
+# ---------------------------------------------------------------------------
 
 dependencies = []
 
@@ -41,11 +37,6 @@ server = [
 ]
 client = ["sounddevice>=0.5.5", "httpx>=0.28.1", "websockets>=16.0"]
 
-[project.scripts]
-trans-cli = "transcriber.cli.app:main"
-trans-server = "transcriber.server.app:main"
-trans-cache = "transcriber.cli.cache:main"
-
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
@@ -64,8 +55,26 @@ dev = [
 commit = ["commitizen>=4.13.8", "pre-commit>=4.5.1"]
 
 # ---------------------------------------------------------------------------
+# SCRIPTS
+# ---------------------------------------------------------------------------
+
+[project.scripts]
+trans-cli = "transcriber.cli.app:main"
+trans-server = "transcriber.server.app:main"
+trans-cache = "transcriber.cli.cache:main"
+
+
+# ---------------------------------------------------------------------------
 # Tool configurations
 # ---------------------------------------------------------------------------
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu128" }]
 
 [tool.bandit]
 targets = ["src"]

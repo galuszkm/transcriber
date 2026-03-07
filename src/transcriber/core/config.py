@@ -105,8 +105,7 @@ class TranscriptionConfig(BaseSettings):
         diarize: Whether to run speaker diarization.
         hf_token: HuggingFace token for pyannote diarization models.
         cache_dir: Root directory for model and data caches.
-            Defaults to ``TRANSCRIBER_CACHE_DIR`` env var, then
-            ``<cwd>/.cache``.
+            Defaults to ``CACHE_DIR`` env var, then ``<cwd>/.cache``.
     """
 
     model_config = SettingsConfigDict(

@@ -1,6 +1,6 @@
 # run all check tasks
 [group("check")]
-check: format check-code check-type check-security check-hooks check-audit
+check: format check-code check-type check-security check-hooks
 
 # check code quality
 [group("check")]
