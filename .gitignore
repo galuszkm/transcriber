@@ -88,3 +88,7 @@ Thumbs.db
 *.pt
 *.bin
 models/
+
+# UI (React / Vite)
+ui/node_modules/
+ui/dist/
