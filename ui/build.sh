@@ -14,4 +14,9 @@ npm run test
 echo "==> Building UI…"
 npm run build
 
+echo "==> Fixing trailing whitespace in built files…"
+STATIC_DIR="$SCRIPT_DIR/../src/transcriber/server/static"
+find "$STATIC_DIR" -type f \( -name '*.js' -o -name '*.css' -o -name '*.html' \) \
+  -exec sed -i 's/[[:space:]]*$//' {} +
+
 echo "==> Done. Static files written to ../src/transcriber/server/static/"

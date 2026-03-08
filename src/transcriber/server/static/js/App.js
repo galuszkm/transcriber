@@ -5,10 +5,10 @@ import{c as to,g as vl,r as u,R as Nr,j as g,a as fl,b as Ie}from"./index.js";va
 `:""}function ye(e,o){let r="";const{_modifiers:t={},_element:n={},_vars:a,...s}=o;if(Object.keys(s).length){const[l,d]=wl(s,c=>c.startsWith(":")||c.startsWith("["));Object.entries(l).forEach(([c,i])=>{const{_modifiers:v={},_element:f={},_vars:p,...b}=i;r+=`${e}${c} { ${hr(b)} }
 `,r+=Ot(`${e}${c}`,p)}),r+=`${e} { ${hr(d)} }
 `}return r+=Ot(e,a),Object.entries(t).forEach(([l,d])=>{d&&Object.keys(d).length&&(r+=ye(`${e}--${l}`,d))}),Object.entries(n).forEach(([l,d])=>{d&&Object.keys(d).length&&(r+=ye(`${e}__${l}`,d))}),r}function tu({theme:e,components:o}){let r="";const{tokens:t,name:n,breakpoints:a}=e;return o.forEach(({name:s,theme:l,overrides:d})=>{const c=`amplify-${s}`,i=`[data-amplify-theme="${n}"] .${c}`,v=Te(l)?l(t):l;r+=ye(i,v),d&&d.forEach(f=>{const p=Te(f.theme)?f.theme(t):f.theme;if("mediaQuery"in f&&(r+=`@media (${f.mediaQuery}) {
- ${ye(i,p)} 
+ ${ye(i,p)}
 }`),"breakpoint"in f){const b=a.values[f.breakpoint];r+=`
 @media (min-width: ${b}px) {
- ${ye(i,p)} 
+ ${ye(i,p)}
 }`}"selector"in f&&(r+=ye(`${f.selector} .${c}`,p)),"colorMode"in f&&(r+=`
 @media (prefers-color-scheme: ${f.colorMode}) {
 ${ye(`[data-amplify-theme="${n}"][data-amplify-color-mode="system"] .${c}`,p)}
@@ -68,23 +68,23 @@ ${f}
     margin-right: `).concat(l,"px ").concat(t,`;
     `),r==="padding"&&"padding-right: ".concat(l,"px ").concat(t,";")].filter(Boolean).join(""),`
   }
-  
+
   .`).concat(fo,` {
     right: `).concat(l,"px ").concat(t,`;
   }
-  
+
   .`).concat(mo,` {
     margin-right: `).concat(l,"px ").concat(t,`;
   }
-  
+
   .`).concat(fo," .").concat(fo,` {
     right: 0 `).concat(t,`;
   }
-  
+
   .`).concat(mo," .").concat(mo,` {
     margin-right: 0 `).concat(t,`;
   }
-  
+
   body[`).concat(Fe,`] {
     `).concat(fd,": ").concat(l,`px;
   }
