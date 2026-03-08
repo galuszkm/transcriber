@@ -22,7 +22,7 @@ jobs:
       - uses: taiki-e/install-action@just
 
       - name: Install dependencies
-        run: just ui-install
+        run: npm ci --prefix ui
 
       - name: Lint
         run: just ui-lint
