@@ -79,7 +79,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--host",
-        default="0.0.0.0",  # noqa: S104
+        default="0.0.0.0",  # noqa: S104  # nosec B104
         help="Bind host (default: 0.0.0.0)",
     )
     parser.add_argument(
