@@ -1,9 +1,9 @@
 """Serve the pre-built React UI at ``/ui``.
 
 Static assets are served with a 1-hour ``Cache-Control`` header.
-``index.html`` is rendered as a Jinja2 template so the server can
-inject configuration (API base URL, static URL) that the React app
-reads from ``window.__SERVER_CONFIG__``.
+``index.html`` is served with ``no-cache`` and has server configuration
+injected as ``window.__SERVER_CONFIG__`` so the React app can resolve
+API URLs correctly behind reverse proxies.
 """
 
 from __future__ import annotations
@@ -15,7 +15,6 @@ from pathlib import Path
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from jinja2 import Environment, FileSystemLoader
 
 logger = logging.getLogger(__name__)
 
@@ -38,29 +37,28 @@ class _CachedStaticFiles(StaticFiles):
 def mount_ui(app: FastAPI, static_dir: Path) -> None:
     """Mount the UI on ``/ui`` with proper cache headers.
 
-    The ``index.html`` is rendered as a Jinja2 template receiving
-    ``server_config_json`` - a JSON string with ``apiBaseUrl`` and
-    ``staticUrl`` that the React app reads from ``window.__SERVER_CONFIG__``.
+    Server configuration (``apiBaseUrl``, ``staticUrl``) is injected into
+    ``index.html`` as a ``<script>`` tag so the React app can read it from
+    ``window.__SERVER_CONFIG__``.  This makes the UI work correctly behind
+    reverse proxies and load balancers where the client-facing URL differs
+    from the internal server URL.
 
     Args:
         app: The FastAPI application instance.
         static_dir: Path to the directory with built UI files.
     """
-    env = Environment(
-        loader=FileSystemLoader(str(static_dir)),
-        autoescape=True,
-    )
-    template = env.get_template("index.html")
+    index_html = (static_dir / "index.html").read_text(encoding="utf-8")
 
     @app.get("/ui", response_class=HTMLResponse, include_in_schema=False)
     async def _serve_ui(request: Request) -> HTMLResponse:
         """Serve the SPA index.html with injected server config."""
         base = str(request.base_url).rstrip("/")
-        config = {
-            "apiBaseUrl": base,
-            "staticUrl": f"{base}/ui",
-        }
-        html = template.render(server_config_json=json.dumps(config))
+        config = json.dumps(
+            {"apiBaseUrl": base, "staticUrl": f"{base}/ui"},
+            ensure_ascii=False,
+        )
+        config_tag = f"<script>window.__SERVER_CONFIG__={config};</script>"
+        html = index_html.replace("</head>", f"{config_tag}</head>", 1)
         return HTMLResponse(
             content=html,
             headers={"Cache-Control": "no-cache"},

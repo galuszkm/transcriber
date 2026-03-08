@@ -8,18 +8,14 @@ from fastapi.testclient import TestClient
 
 from transcriber.server.ui import mount_ui
 
-_INDEX_HTML = (
-    "<html><body>"
-    '{% if server_config_json is defined %}<script>window.__SERVER_CONFIG__ = '
-    "{{ server_config_json }};</script>{% endif %}"
-    "<div>hello</div></body></html>"
-)
-
 
 @pytest.fixture()
 def static_dir(tmp_path: Path) -> Path:
-    """Create a minimal static directory with an index.html template."""
-    (tmp_path / "index.html").write_text(_INDEX_HTML, encoding="utf-8")
+    """Create a minimal static directory with an index.html."""
+    (tmp_path / "index.html").write_text(
+        "<html><head></head><body><div>hello</div></body></html>",
+        encoding="utf-8",
+    )
     css = tmp_path / "css"
     css.mkdir()
     (css / "index.css").write_text("body{}", encoding="utf-8")
