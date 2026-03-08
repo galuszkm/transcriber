@@ -24,4 +24,14 @@ describe("App", () => {
     expect(btn).toBeInTheDocument();
     expect(btn).toBeDisabled();
   });
+
+  it("shows transcript placeholder in initial state", () => {
+    render(<App />);
+    expect(screen.getByText(/upload or record audio/i)).toBeInTheDocument();
+  });
+
+  it("renders the diarize checkbox", () => {
+    render(<App />);
+    expect(screen.getByLabelText(/diarization/i)).toBeInTheDocument();
+  });
 });

@@ -6,12 +6,21 @@ interface Props {
   segments: Segment[];
 }
 
+/**
+ * Renders transcript segments as timestamped rows.
+ *
+ * Each row shows `[start-end]`, an optional speaker label, and the text.
+ */
 export default function TranscriptSegments({ segments }: Props) {
   return (
     <View className="transcript-segments">
       {segments.map((seg, i) => (
         <View key={i} className="segment-row">
-          <Text className="segment-time" fontFamily="monospace" fontSize="0.8rem">
+          <Text
+            className="segment-time"
+            fontFamily="monospace"
+            fontSize="0.8rem"
+          >
             [{formatTime(seg.start)}-{formatTime(seg.end)}]
           </Text>
           {seg.speaker && (

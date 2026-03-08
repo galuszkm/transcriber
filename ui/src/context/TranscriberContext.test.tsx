@@ -18,6 +18,7 @@ describe("TranscriberContext", () => {
     expect(result.current.message).toBe("");
     expect(result.current.transcript).toBeNull();
     expect(result.current.view).toBe("segments");
+    expect(result.current.diarize).toBe(false);
   });
 
   it("updates audioFile via setAudioFile", () => {

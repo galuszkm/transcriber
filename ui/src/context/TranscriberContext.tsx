@@ -13,17 +13,20 @@ import { transcribeFile } from "../api/transcribe";
 /** Possible status values for the transcription workflow. */
 export type Status = "idle" | "transcribing" | "done" | "error";
 
-/** Which transcript view is active. */
+/** Which transcript view tab is active. */
 export type TranscriptView = "segments" | "script" | "plain";
 
+/** Shape of the transcriber context consumed by child components. */
 interface TranscriberState {
   audioFile: File | null;
   status: Status;
   message: string;
   transcript: TranscribeResponse | null;
   view: TranscriptView;
+  diarize: boolean;
 
   setAudioFile: (file: File | null) => void;
+  setDiarize: (enabled: boolean) => void;
   submit: () => void;
   cancel: () => void;
   reset: () => void;
@@ -32,14 +35,22 @@ interface TranscriberState {
 
 const TranscriberContext = createContext<TranscriberState | null>(null);
 
+/**
+ * Provides transcription state and actions to the component tree.
+ *
+ * Wraps the entire app so any child can call `useTranscriber()` to access
+ * audio file, transcription status, results, and control actions.
+ */
 export function TranscriberProvider({ children }: { children: ReactNode }) {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
   const [transcript, setTranscript] = useState<TranscribeResponse | null>(null);
   const [view, setView] = useState<TranscriptView>("segments");
+  const [diarize, setDiarize] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
+  /** Upload the audio file and start transcription. */
   const submit = useCallback(() => {
     if (!audioFile) return;
 
@@ -50,7 +61,7 @@ export function TranscriberProvider({ children }: { children: ReactNode }) {
     setMessage("Uploading and transcribing...");
     setTranscript(null);
 
-    transcribeFile(audioFile, ctrl.signal)
+    transcribeFile(audioFile, { signal: ctrl.signal, diarize })
       .then((result) => {
         setTranscript(result);
         setStatus("done");
@@ -65,13 +76,15 @@ export function TranscriberProvider({ children }: { children: ReactNode }) {
         setStatus("error");
         setMessage(err instanceof Error ? err.message : "Unknown error");
       });
-  }, [audioFile]);
+  }, [audioFile, diarize]);
 
+  /** Abort an in-progress transcription request. */
   const cancel = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
   }, []);
 
+  /** Reset all state back to initial (idle, no file, no transcript). */
   const reset = useCallback(() => {
     cancel();
     setAudioFile(null);
@@ -88,7 +101,9 @@ export function TranscriberProvider({ children }: { children: ReactNode }) {
         message,
         transcript,
         view,
+        diarize,
         setAudioFile,
+        setDiarize,
         submit,
         cancel,
         reset,
@@ -100,7 +115,11 @@ export function TranscriberProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/** Consume the transcriber context; throws if used outside provider. */
+/**
+ * Consume the transcriber context.
+ *
+ * @throws Error if called outside of `<TranscriberProvider>`.
+ */
 export function useTranscriber(): TranscriberState {
   const ctx = useContext(TranscriberContext);
   if (!ctx) {
@@ -108,3 +127,4 @@ export function useTranscriber(): TranscriberState {
   }
   return ctx;
 }
+

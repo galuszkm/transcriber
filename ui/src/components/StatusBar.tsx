@@ -1,6 +1,11 @@
 import { Alert } from "@aws-amplify/ui-react";
 import { useTranscriber } from "../context/TranscriberContext";
 
+/**
+ * Status alert bar showing the current transcription state.
+ *
+ * Displays success, error, or info messages. Hidden when there's no message.
+ */
 export default function StatusBar() {
   const { status, message } = useTranscriber();
 

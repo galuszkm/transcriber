@@ -17,7 +17,7 @@ afterAll(() => {
 });
 
 describe("AudioPlayer", () => {
-  it("renders nothing when there is no audio file or status is not done", () => {
+  it("renders nothing when there is no audio file", () => {
     const { container } = render(
       <TranscriberProvider>
         <AudioPlayer />

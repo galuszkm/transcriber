@@ -4,9 +4,16 @@ import { FiMic, FiSquare } from "react-icons/fi";
 import { useTranscriber } from "../context/TranscriberContext";
 import { formatTime } from "../utils/format";
 
-/** Maximum recording duration in seconds. */
-const MAX_SECONDS = 300; // 5 minutes
+/** Maximum recording duration in seconds (5 minutes). */
+const MAX_SECONDS = 300;
 
+/**
+ * Microphone recording button with timer display.
+ *
+ * Uses the MediaRecorder API to capture audio from the user's microphone.
+ * Auto-stops at MAX_SECONDS. The resulting WebM blob is set as the audio file
+ * in the transcriber context.
+ */
 export default function AudioRecorder() {
   const { setAudioFile, status } = useTranscriber();
   const [recording, setRecording] = useState(false);
@@ -16,6 +23,7 @@ export default function AudioRecorder() {
   const chunksRef = useRef<Blob[]>([]);
   const busy = status === "transcribing";
 
+  /** Stop the active recording and assemble the audio blob. */
   const stopRecording = useCallback(() => {
     recorderRef.current?.stop();
     if (timerRef.current) clearInterval(timerRef.current);
@@ -24,6 +32,10 @@ export default function AudioRecorder() {
     setElapsed(0);
   }, []);
 
+  /**
+   * Request microphone access and start recording.
+   * Silently fails if the user denies permission.
+   */
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -34,6 +46,7 @@ export default function AudioRecorder() {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
+      // Assemble recorded chunks into a File when recording stops.
       recorder.onstop = () => {
         stream.getTracks().forEach((t) => t.stop());
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
@@ -46,6 +59,7 @@ export default function AudioRecorder() {
       setRecording(true);
       setElapsed(0);
 
+      // Auto-stop at the maximum duration.
       let ticks = 0;
       const id = setInterval(() => {
         ticks += 1;
@@ -61,11 +75,11 @@ export default function AudioRecorder() {
       }, 1000);
       timerRef.current = id;
     } catch {
-      // Mic permission denied or unavailable
+      // Mic permission denied or unavailable — do nothing
     }
   }, [setAudioFile]);
 
-  // Cleanup on unmount.
+  // Release mic tracks and clear timer on unmount.
   useEffect(() => {
     return () => {
       recorderRef.current?.stream.getTracks().forEach((t) => t.stop());
@@ -82,7 +96,12 @@ export default function AudioRecorder() {
         <Text fontFamily="monospace" fontSize="0.875rem" data-testid="timer">
           {formatTime(elapsed)} / {formatTime(MAX_SECONDS)}
         </Text>
-        <Button variation="destructive" size="small" onClick={stopRecording} className="btn-icon">
+        <Button
+          variation="destructive"
+          size="small"
+          onClick={stopRecording}
+          className="btn-icon"
+        >
           <FiSquare size={14} />
           Stop
         </Button>
@@ -91,7 +110,12 @@ export default function AudioRecorder() {
   }
 
   return (
-    <Button size="small" onClick={startRecording} isDisabled={busy} className="btn-icon">
+    <Button
+      size="small"
+      onClick={startRecording}
+      isDisabled={busy}
+      className="btn-icon"
+    >
       <FiMic size={14} />
       Record
     </Button>

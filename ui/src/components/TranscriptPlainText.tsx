@@ -4,6 +4,7 @@ interface Props {
   text: string;
 }
 
+/** Read-only textarea showing the full plain-text transcript. */
 export default function TranscriptPlainText({ text }: Props) {
   return (
     <div className="transcript-plain">
