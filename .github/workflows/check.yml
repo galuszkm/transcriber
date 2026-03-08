@@ -18,11 +18,20 @@ jobs:
 
       - uses: extractions/setup-just@v2
 
-      - name: Install dev dependencies
+      - name: Install dependencies
         run: uv sync --all-groups --all-extras
 
-      - name: Run checks
-        run: uv run just check
+      - name: Lint
+        run: uv run just check-code
 
-      - name: Run tests
+      - name: Type-check
+        run: uv run just check-type
+
+      - name: Security
+        run: uv run just check-security
+
+      - name: Audit
+        run: uv run just check-audit
+
+      - name: Test
         run: uv run just test

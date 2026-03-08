@@ -19,18 +19,16 @@ jobs:
           cache: "npm"
           cache-dependency-path: ui/package-lock.json
 
+      - uses: taiki-e/install-action@just
+
       - name: Install dependencies
-        working-directory: ui
-        run: npm ci
+        run: just ui-install
 
       - name: Lint
-        working-directory: ui
-        run: npm run lint
+        run: just ui-lint
 
       - name: Type-check
-        working-directory: ui
-        run: npx tsc -b --noEmit
+        run: just ui-typecheck
 
       - name: Test
-        working-directory: ui
-        run: npm run test
+        run: just ui-test

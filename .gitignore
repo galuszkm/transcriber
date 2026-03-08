@@ -92,3 +92,6 @@ models/
 # UI (React / Vite)
 ui/node_modules/
 ui/dist/
+
+# AI
+.claude
