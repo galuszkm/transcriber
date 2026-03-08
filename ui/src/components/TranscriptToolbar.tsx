@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Flex, Menu, MenuItem } from "@aws-amplify/ui-react";
 import type { TranscribeResponse } from "../types";
 import {
@@ -16,14 +16,23 @@ interface Props {
 
 export default function TranscriptToolbar({ transcript }: Props) {
   const [copied, setCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleCopy = async (text: string) => {
+  // Clear timeout on unmount.
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const handleCopy = useCallback(async (text: string) => {
     const ok = await copyToClipboard(text);
     if (ok) {
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setCopied(false), 2000);
     }
-  };
+  }, []);
 
   return (
     <Flex gap="0.5rem" wrap="wrap">

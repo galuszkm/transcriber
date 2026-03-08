@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Button, Card, Flex, Text } from "@aws-amplify/ui-react";
 import { useTranscriber } from "../context/TranscriberContext";
+import { downloadBlob } from "../utils/format";
 
 export default function AudioPlayer() {
   const { audioFile, status } = useTranscriber();
@@ -21,13 +22,7 @@ export default function AudioPlayer() {
   if (!audioFile || status !== "done") return null;
 
   const handleDownload = () => {
-    if (!objectUrl) return;
-    const a = document.createElement("a");
-    a.href = objectUrl;
-    a.download = audioFile.name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    downloadBlob(audioFile, audioFile.name);
   };
 
   return (

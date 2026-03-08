@@ -53,10 +53,11 @@ def mount_ui(app: FastAPI, static_dir: Path) -> None:
     async def _serve_ui(request: Request) -> HTMLResponse:
         """Serve the SPA index.html with injected server config."""
         base = str(request.base_url).rstrip("/")
+        # ensure_ascii=True escapes all non-ASCII chars; replace </
+        # to prevent script injection via closing tags.
         config = json.dumps(
             {"apiBaseUrl": base, "staticUrl": f"{base}/ui"},
-            ensure_ascii=False,
-        )
+        ).replace("</", r"<\/")
         config_tag = f"<script>window.__SERVER_CONFIG__={config};</script>"
         html = index_html.replace("</head>", f"{config_tag}</head>", 1)
         return HTMLResponse(

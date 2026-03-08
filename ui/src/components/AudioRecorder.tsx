@@ -51,6 +51,7 @@ export default function AudioRecorder() {
         if (ticks >= MAX_SECONDS) {
           recorder.stop();
           clearInterval(id);
+          timerRef.current = null;
           setRecording(false);
           setElapsed(0);
           return;

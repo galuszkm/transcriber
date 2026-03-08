@@ -2,10 +2,11 @@ import type { TranscribeResponse, Segment } from "../types";
 
 /** Format seconds to mm:ss display. */
 export function formatTime(sec: number): string {
-  const m = Math.floor(sec / 60)
+  const abs = Math.max(0, sec);
+  const m = Math.floor(abs / 60)
     .toString()
     .padStart(2, "0");
-  const s = Math.floor(sec % 60)
+  const s = Math.floor(abs % 60)
     .toString()
     .padStart(2, "0");
   return `${m}:${s}`;
@@ -87,6 +88,11 @@ export function downloadFile(
   mime = "text/plain",
 ): void {
   const blob = new Blob([content], { type: mime });
+  downloadBlob(blob, filename);
+}
+
+/** Download a Blob or File as a named file. */
+export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
