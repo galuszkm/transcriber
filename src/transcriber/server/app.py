@@ -6,14 +6,9 @@ Start the server::
     trans-server --model large-v3 --port 9000  # custom
     trans-server --device cpu                  # CPU mode
 
-SageMaker compatibility
-~~~~~~~~~~~~~~~~~~~~~~~
-
-When deployed inside an AWS SageMaker inference container the service
-must listen on port **8080** and expose ``GET /ping`` and
-``POST /invocations`` endpoints.  Set ``SAGEMAKER_PORT=8080`` (or
-pass ``--port 8080``) to bind on the correct port.  The SageMaker-
-compatible routes are registered automatically.
+The server binds to ``0.0.0.0:8080`` by default, which satisfies the
+AWS SageMaker container contract out of the box.  SageMaker-compatible
+``GET /ping`` and ``POST /invocations`` routes are always registered.
 
 See ``SAGEMAKER.md`` in the repository root for a full deployment guide.
 """
@@ -22,7 +17,6 @@ from __future__ import annotations
 
 import argparse
 import logging
-import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -35,13 +29,6 @@ from .schemas import UTF8JSONResponse
 from .worker import InferenceWorker
 
 logger = logging.getLogger(__name__)
-
-#: Default port.  Overridden to **8080** when the ``SAGEMAKER_PORT``
-#: environment variable is set (SageMaker contract).
-_DEFAULT_PORT: int = int(os.environ.get("SAGEMAKER_PORT", "8000"))
-
-#: Default bind host.  Inside a container ``0.0.0.0`` is typical.
-_DEFAULT_HOST: str = os.environ.get("SAGEMAKER_BIND", "127.0.0.1")
 
 
 def create_app(config: TranscriptionConfig | None = None) -> FastAPI:
@@ -92,14 +79,14 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--host",
-        default=_DEFAULT_HOST,
-        help=f"Bind host (default: {_DEFAULT_HOST})",
+        default="0.0.0.0",  # noqa: S104
+        help="Bind host (default: 0.0.0.0)",
     )
     parser.add_argument(
         "--port",
         type=int,
-        default=_DEFAULT_PORT,
-        help=f"Bind port (default: {_DEFAULT_PORT})",
+        default=8080,
+        help="Bind port (default: 8080)",
     )
 
     add_pipeline_args(parser, default_device="cuda")

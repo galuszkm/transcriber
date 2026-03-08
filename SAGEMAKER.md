@@ -14,8 +14,9 @@ using the **Bring Your Own Container (BYOC)** approach.
 4. [Building the Docker Image](#building-the-docker-image)
 5. [Deploying to SageMaker](#deploying-to-sagemaker)
 6. [Endpoint Usage](#endpoint-usage)
-7. [Limitations & Differences from Local](#limitations--differences-from-local)
-8. [References](#references)
+7. [Bypassing Timeout & Payload Limits](#bypassing-timeout--payload-limits)
+8. [Limitations & Differences from Local](#limitations--differences-from-local)
+9. [References](#references)
 
 ---
 
@@ -29,7 +30,7 @@ reference implementation.
 
 | Requirement | Detail | Source |
 |---|---|---|
-| **Port** | Container must listen on **port 8080** (the official SageMaker toolkit uses `SAGEMAKER_BIND_TO_PORT` env var; this project uses `SAGEMAKER_PORT` for the same purpose). | [`aws/amazon-sagemaker-examples` — `main.py`](https://github.com/aws/amazon-sagemaker-examples/blob/default/archived/inference_pipeline_custom_containers/containers/postprocessor/docker/code/main.py) |
+| **Port** | Container must listen on **port 8080**. | [`aws/amazon-sagemaker-examples` — `main.py`](https://github.com/aws/amazon-sagemaker-examples/blob/default/archived/inference_pipeline_custom_containers/containers/postprocessor/docker/code/main.py) |
 | **`GET /ping`** | Health-check endpoint.  Must return **HTTP 200** when healthy (model loaded). SageMaker calls this periodically. | [`aws/amazon-sagemaker-examples` — `preprocessing.py`](https://github.com/aws/amazon-sagemaker-examples/blob/default/archived/byoc-nginx-python/featurizer/code/preprocessing.py) |
 | **`POST /invocations`** | Inference endpoint.  Receives audio payload, returns prediction JSON.  Must respond within **60 seconds** for standard real-time endpoints.  Max payload **25 MB**. | [SageMaker Inference Toolkit — `parameters.py`](https://github.com/aws/sagemaker-pytorch-inference-toolkit/blob/master/src/sagemaker_inference/parameters.py) |
 | **Model artifacts** | SageMaker unpacks `model.tar.gz` from S3 into `/opt/ml/model` at container startup.  The container must be able to load models from this path. | [AWS docs: *Use Your Own Inference Code*](https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html) |
@@ -45,7 +46,6 @@ reference implementation.
 | Requirement | How the Service Already Met It |
 |---|---|
 | FastAPI HTTP server | The service already uses FastAPI + Uvicorn as its serving stack. |
-| Health check | `GET /health` exists and returns model readiness status. |
 | Multiple input formats | The server accepts multipart file uploads, base64 JSON, and raw bytes — all usable via `/invocations`. |
 | Streaming support | SSE endpoints (`/transcribe/stream`) emit chunked responses compatible with SageMaker's `InvokeEndpointWithResponseStream` API. |
 | Environment-based config | All config (model size, device, HF token, etc.) is read from env vars via `pydantic-settings`. |
@@ -55,21 +55,11 @@ reference implementation.
 
 | Gap | Resolution |
 |---|---|
-| No `GET /ping` endpoint | **Added** — returns HTTP 200 when model loaded, 503 otherwise. |
-| No `POST /invocations` endpoint | **Added** — content-type-aware endpoint supporting `application/json`, `application/octet-stream`, and `multipart/form-data`. |
-| Default port was 8000, not 8080 | **Added** — `SAGEMAKER_PORT` env var support; defaults to 8000 for local dev, set to 8080 in the Dockerfile for SageMaker. |
+| No `GET /ping` endpoint | **Added** — returns HTTP 200 with `HealthResponse` when model loaded, HTTP 503 otherwise.  Shares the same handler as `/health`. |
+| No `POST /invocations` endpoint | **Added** — content-type-aware endpoint supporting `application/json`, `application/octet-stream`, and `multipart/form-data`.  Uses the shared `_submit_transcription()` helper. |
+| Default port was 8000, not 8080 | **Changed** — default port is now **8080** and default host is **0.0.0.0**, matching the SageMaker contract out of the box. |
 | No Dockerfile | **Added** — GPU-ready Dockerfile based on `nvidia/cuda:12.8.0-cudnn-runtime-ubuntu24.04`. |
 | No `serve` entrypoint | **Added** — `docker/entrypoint.sh` handles the `serve` argument SageMaker passes. |
-| Host bound to `127.0.0.1` by default | **Added** — `SAGEMAKER_BIND` env var support; set to `0.0.0.0` in the Dockerfile. |
-
-### ⚠️ Limitations (Cannot Be Resolved)
-
-| Limitation | Detail |
-|---|---|
-| **WebSocket not supported** | SageMaker real-time endpoints only support HTTP POST/GET.  The `/ws/transcribe` WebSocket endpoint **will not work** on SageMaker.  Use the HTTP endpoints instead. ([Source](https://github.com/aws/sagemaker-inference-toolkit)) |
-| **60-second inference timeout** | Standard SageMaker real-time endpoints timeout after 60 seconds ([source](https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_runtime_InvokeEndpoint.html)).  Long audio files may exceed this.  Mitigations: use **Asynchronous Inference** (up to 1 hour timeout), or select a faster model size (`small` instead of `large-v3`). ([Async Inference docs](https://docs.aws.amazon.com/sagemaker/latest/dg/async-inference.html)) |
-| **25 MB payload limit** | Audio files larger than 25 MB must be pre-uploaded to S3 and passed as a reference, or use SageMaker Asynchronous Inference (up to 1 GB). |
-| **No SSE via standard `/invocations`** | Streaming progress via SSE requires the `InvokeEndpointWithResponseStream` API on the client side.  Standard `InvokeEndpoint` returns a single response. |
 
 ---
 
@@ -77,12 +67,16 @@ reference implementation.
 
 ### 1. SageMaker Endpoints (`src/transcriber/server/routes.py`)
 
-Two new routes were added alongside all existing endpoints:
+Two new routes alongside all existing endpoints:
 
 ```
-GET  /ping          → 200 (ready) or 503 (loading)
+GET  /ping          → 200 + HealthResponse (ready) or 503 + HealthResponse (loading)
 POST /invocations   → Transcription result (JSON)
 ```
+
+`/ping` and `/health` share the same handler function (`_health_response`).
+Both return the full `HealthResponse` body and use HTTP status codes to
+indicate readiness (200 = ready, 503 = loading).
 
 `/invocations` automatically detects the input format from `Content-Type`:
 
@@ -93,20 +87,19 @@ POST /invocations   → Transcription result (JSON)
 | `multipart/form-data` | File upload in `file` field |
 | *(other / missing)* | Treated as raw bytes |
 
-### 2. SageMaker-Aware Configuration (`src/transcriber/server/app.py`)
+All transcription endpoints (`/invocations`, `/transcribe`, `/transcribe/json`,
+`/transcribe/raw`) use the shared `_submit_transcription()` helper to avoid
+code duplication.
 
-Environment variables for SageMaker deployment:
+### 2. Default Port & Host (`src/transcriber/server/app.py`)
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `SAGEMAKER_PORT` | `8000` | Override the listening port (set to `8080` in Dockerfile) |
-| `SAGEMAKER_BIND` | `127.0.0.1` | Override the bind address (set to `0.0.0.0` in Dockerfile) |
-
-These do **not** affect local development — the defaults remain `127.0.0.1:8000`.
+The server now defaults to **`0.0.0.0:8080`** — the SageMaker-required address.
+No extra environment variables are needed; `--host` and `--port` CLI arguments
+can still override the defaults.
 
 ### 3. Dockerfile
 
-A multi-stage Dockerfile at the repository root:
+A Dockerfile at the repository root:
 
 - **Base**: `nvidia/cuda:12.8.0-cudnn-runtime-ubuntu24.04`
 - **Python deps**: Installed via `uv` with the `server` extra (includes `ml`)
@@ -115,9 +108,9 @@ A multi-stage Dockerfile at the repository root:
 
 ### 4. Entrypoint Script (`docker/entrypoint.sh`)
 
-A shell script that starts `trans-server` with configuration from environment
-variables.  SageMaker passes `serve` as `$1` — the script ignores the argument
-and starts the server.
+A shell script that starts `trans-server` with model configuration from
+environment variables.  SageMaker passes `serve` as `$1` — the script ignores
+the argument and starts the server on the default `0.0.0.0:8080`.
 
 ---
 
@@ -196,6 +189,8 @@ sm.create_model(
 
 ### Step 3: Create Endpoint Configuration
 
+For **real-time** inference (≤ 60 s processing, ≤ 25 MB payload):
+
 ```python
 sm.create_endpoint_config(
     EndpointConfigName="transcriber-config",
@@ -210,6 +205,9 @@ sm.create_endpoint_config(
     ],
 )
 ```
+
+For **asynchronous** inference (≤ 1 hour processing, ≤ 1 GB payload) — see
+[Bypassing Timeout & Payload Limits](#bypassing-timeout--payload-limits) below.
 
 ### Step 4: Deploy Endpoint
 
@@ -262,13 +260,13 @@ print(result["transcript"])
 
 ## Endpoint Usage
 
-### Local Endpoints (Still Available)
-
-All existing endpoints continue to work as before:
+All endpoints are available both locally and on SageMaker:
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `/health` | GET | Detailed health (model size, device, queue) |
+| `/ping` | GET | Health check — 200 (ready) / 503 (loading) with `HealthResponse` body |
+| `/health` | GET | Same handler as `/ping` — identical response |
+| `/invocations` | POST | SageMaker inference — auto-detects content type |
 | `/transcribe` | POST | Multipart or base64 form |
 | `/transcribe/json` | POST | JSON body with base64 |
 | `/transcribe/raw` | POST | Raw audio bytes |
@@ -277,40 +275,110 @@ All existing endpoints continue to work as before:
 | `/transcribe/raw/stream` | POST | SSE streaming (raw input) |
 | `/ws/transcribe` | WebSocket | Continuous transcription |
 
-### SageMaker Endpoints
+---
 
-| Endpoint | Method | Description |
+## Bypassing Timeout & Payload Limits
+
+SageMaker real-time endpoints have a **60-second inference timeout** and
+**25 MB maximum payload** — these limits are hardcoded and
+[cannot be increased](https://github.com/aws/sagemaker-python-sdk/issues/1119).
+For audio files that exceed these limits, SageMaker offers two alternatives
+that work with the **exact same container image** — no code changes required.
+
+### Asynchronous Inference (Recommended)
+
+[SageMaker Async Inference](https://docs.aws.amazon.com/sagemaker/latest/dg/async-inference.html)
+completely bypasses both limits:
+
+| Limit | Real-Time | Async |
 |---|---|---|
-| `/ping` | GET | SageMaker health check (200/503) |
-| `/invocations` | POST | SageMaker inference (auto-detects content type) |
+| Inference timeout | 60 seconds | **up to 1 hour** |
+| Max payload | 25 MB | **up to 1 GB** |
+| Scaling to zero | ❌ | ✅ (cost savings when idle) |
+
+The container's `/invocations` endpoint is called identically — SageMaker
+handles S3 upload/download and timeout management automatically.
+
+#### Deploying an Async Endpoint
+
+```python
+sm.create_endpoint_config(
+    EndpointConfigName="transcriber-async-config",
+    ProductionVariants=[
+        {
+            "VariantName": "primary",
+            "ModelName": "transcriber-model",
+            "InstanceType": "ml.g5.xlarge",
+            "InitialInstanceCount": 1,
+            "ContainerStartupHealthCheckTimeoutInSeconds": 600,
+        },
+    ],
+    AsyncInferenceConfig={
+        "OutputConfig": {
+            "S3OutputPath": "s3://my-bucket/transcriber-output/",
+            # Optional: get notified when transcription completes
+            # "NotificationConfig": {
+            #     "SuccessTopic": "arn:aws:sns:us-east-1:123456789:TranscribeSuccess",
+            #     "ErrorTopic": "arn:aws:sns:us-east-1:123456789:TranscribeError",
+            # },
+        },
+        "ClientConfig": {
+            "MaxConcurrentInvocationsPerInstance": 1,  # GPU constraint
+        },
+    },
+)
+
+sm.create_endpoint(
+    EndpointName="transcriber-async-endpoint",
+    EndpointConfigName="transcriber-async-config",
+)
+```
+
+#### Invoking an Async Endpoint
+
+```python
+import boto3
+
+runtime = boto3.client("sagemaker-runtime")
+
+# 1. Upload audio to S3
+s3 = boto3.client("s3")
+s3.upload_file("long_meeting.wav", "my-bucket", "inputs/long_meeting.wav")
+
+# 2. Invoke asynchronously
+response = runtime.invoke_endpoint_async(
+    EndpointName="transcriber-async-endpoint",
+    InputLocation="s3://my-bucket/inputs/long_meeting.wav",
+    ContentType="application/octet-stream",
+    InvocationTimeoutSeconds=3600,  # up to 1 hour
+)
+
+# 3. Poll for result or use SNS notification
+output_location = response["OutputLocation"]
+print(f"Result will be at: {output_location}")
+```
+
+### Streaming Inference
+
+For real-time progress feedback, the SSE streaming endpoints
+(`/transcribe/stream`, `/transcribe/json/stream`, `/transcribe/raw/stream`)
+work with SageMaker's
+[`InvokeEndpointWithResponseStream`](https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_runtime_InvokeEndpointWithResponseStream.html)
+API.  This extends the response timeout to **8 minutes** and delivers chunked
+responses as they are generated.
 
 ---
 
 ## Limitations & Differences from Local
 
-| Feature | Local | SageMaker |
-|---|---|---|
-| WebSocket (`/ws/transcribe`) | ✅ Works | ❌ Not supported (HTTP only) |
-| SSE streaming | ✅ Works | ⚠️ Requires `InvokeEndpointWithResponseStream` API |
-| Inference timeout | Unlimited | 60 sec (standard) / 1 hour (async) |
-| Max payload | Unlimited | 25 MB (standard) / 1 GB (async) |
-| Port | 8000 | 8080 (SageMaker contract) |
-| Bind address | 127.0.0.1 | 0.0.0.0 (container requirement) |
-| Model loading | HuggingFace download | HuggingFace download or `/opt/ml/model` |
-
-### Asynchronous Inference (Recommended for Long Audio)
-
-For audio files that may take longer than 60 seconds to transcribe, use
-[SageMaker Asynchronous Inference](https://docs.aws.amazon.com/sagemaker/latest/dg/async-inference.html):
-
-- Up to **1 hour** processing time
-- Up to **1 GB** payload size
-- Input/output via S3
-- SNS notifications on completion
-- Auto-scales to zero when idle
-
-The same container image works for both real-time and asynchronous endpoints —
-SageMaker handles the S3 I/O and timeout management automatically.
+| Feature | Local | SageMaker Real-Time | SageMaker Async |
+|---|---|---|---|
+| WebSocket (`/ws/transcribe`) | ✅ Works | ❌ Not supported | ❌ Not supported |
+| SSE streaming | ✅ Works | ⚠️ Via `InvokeEndpointWithResponseStream` | ❌ Not applicable |
+| Inference timeout | Unlimited | 60 sec | **1 hour** |
+| Max payload | Unlimited | 25 MB | **1 GB** |
+| Scale to zero | N/A | ❌ | ✅ |
+| Model loading | HuggingFace download | HuggingFace download or `/opt/ml/model` | Same |
 
 ---
 
@@ -321,5 +389,6 @@ SageMaker handles the S3 I/O and timeout management automatically.
 - [AWS SageMaker Inference Toolkit (GitHub)](https://github.com/aws/sagemaker-inference-toolkit)
 - [AWS SageMaker Examples — BYOC](https://github.com/aws/amazon-sagemaker-examples)
 - [SageMaker Inference Toolkit — `parameters.py`](https://github.com/aws/sagemaker-pytorch-inference-toolkit/blob/master/src/sagemaker_inference/parameters.py) — defines `SAGEMAKER_BIND_TO_PORT`, `SAGEMAKER_MODEL_SERVER_TIMEOUT`, etc.
-- [AWS SageMaker Streaming Inference Blog](https://aws.amazon.com/blogs/machine-learning/elevating-the-generative-ai-experience-introducing-streaming-support-in-amazon-sagemaker-hosting/)
-- [AWS SageMaker Asynchronous Inference](https://docs.aws.amazon.com/sagemaker/latest/dg/async-inference.html)
+- [SageMaker Asynchronous Inference](https://docs.aws.amazon.com/sagemaker/latest/dg/async-inference.html)
+- [SageMaker Streaming Inference](https://aws.amazon.com/blogs/machine-learning/elevating-the-generative-ai-experience-introducing-streaming-support-in-amazon-sagemaker-hosting/)
+- [InvokeEndpoint timeout is hardcoded at 60s](https://github.com/aws/sagemaker-python-sdk/issues/1119)

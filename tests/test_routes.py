@@ -42,7 +42,7 @@ async def test_sse_generator_stops_on_none() -> None:
 
 
 # ---------------------------------------------------------------------------
-# SageMaker endpoint tests (/ping + /invocations)
+# Test helpers
 # ---------------------------------------------------------------------------
 
 
@@ -63,20 +63,58 @@ def _make_test_app(*, worker_ready: bool = True) -> FastAPI:
     return app
 
 
+# ---------------------------------------------------------------------------
+# /ping and /health — unified health check
+# ---------------------------------------------------------------------------
+
+
 class TestPingEndpoint:
-    """GET /ping — SageMaker health check."""
+    """GET /ping — health check returning HealthResponse."""
 
     def test_ping_returns_200_when_ready(self) -> None:
         app = _make_test_app(worker_ready=True)
         client = TestClient(app)
         resp = client.get("/ping")
         assert resp.status_code == 200
+        body = resp.json()
+        assert body["status"] == "ready"
+        assert body["model_loaded"] is True
 
     def test_ping_returns_503_when_loading(self) -> None:
         app = _make_test_app(worker_ready=False)
         client = TestClient(app)
         resp = client.get("/ping")
         assert resp.status_code == 503
+        body = resp.json()
+        assert body["status"] == "loading"
+        assert body["model_loaded"] is False
+
+
+class TestHealthEndpoint:
+    """GET /health — same handler as /ping."""
+
+    def test_health_returns_200_when_ready(self) -> None:
+        app = _make_test_app(worker_ready=True)
+        client = TestClient(app)
+        resp = client.get("/health")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["status"] == "ready"
+        assert body["model_size"] == "large-v3"
+        assert body["device"] == "cpu"
+
+    def test_health_returns_503_when_loading(self) -> None:
+        app = _make_test_app(worker_ready=False)
+        client = TestClient(app)
+        resp = client.get("/health")
+        assert resp.status_code == 503
+        body = resp.json()
+        assert body["status"] == "loading"
+
+
+# ---------------------------------------------------------------------------
+# /invocations — SageMaker inference
+# ---------------------------------------------------------------------------
 
 
 class TestInvocationsEndpoint:

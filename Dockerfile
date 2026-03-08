@@ -60,10 +60,6 @@ ENV PATH="/opt/venv/bin:${PATH}" \
 ENV SM_MODEL_DIR=/opt/ml/model
 RUN mkdir -p /opt/ml/model
 
-# SageMaker requires the container to listen on port 8080.
-ENV SAGEMAKER_PORT=8080 \
-    SAGEMAKER_BIND=0.0.0.0
-
 EXPOSE 8080
 
 # ---- entrypoint --------------------------------------------------------------
