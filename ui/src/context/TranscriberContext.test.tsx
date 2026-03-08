@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   TranscriberProvider,
   useTranscriber,
-} from "../context/TranscriberContext";
+} from "./TranscriberContext";
 
 function wrapper({ children }: { children: React.ReactNode }) {
   return <TranscriberProvider>{children}</TranscriberProvider>;
@@ -17,6 +17,7 @@ describe("TranscriberContext", () => {
     expect(result.current.status).toBe("idle");
     expect(result.current.message).toBe("");
     expect(result.current.transcript).toBeNull();
+    expect(result.current.view).toBe("segments");
   });
 
   it("updates audioFile via setAudioFile", () => {
@@ -50,7 +51,6 @@ describe("TranscriberContext", () => {
   });
 
   it("transitions to transcribing when submit is called with a file", async () => {
-    // Mock fetch to return a pending promise
     vi.spyOn(globalThis, "fetch").mockReturnValue(new Promise(() => {}));
 
     const { result } = renderHook(() => useTranscriber(), { wrapper });
@@ -63,6 +63,16 @@ describe("TranscriberContext", () => {
     expect(result.current.message).toContain("transcribing");
 
     vi.restoreAllMocks();
+  });
+
+  it("switches view via setView", () => {
+    const { result } = renderHook(() => useTranscriber(), { wrapper });
+
+    act(() => result.current.setView("script"));
+    expect(result.current.view).toBe("script");
+
+    act(() => result.current.setView("plain"));
+    expect(result.current.view).toBe("plain");
   });
 
   it("throws when used outside provider", () => {

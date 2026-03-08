@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import App from "../App";
+import App from "./App";
 
 describe("App", () => {
   it("renders the heading", () => {
@@ -10,7 +10,7 @@ describe("App", () => {
 
   it("renders the upload area", () => {
     render(<App />);
-    expect(screen.getByText(/click or drop an audio file here/i)).toBeInTheDocument();
+    expect(screen.getByText(/click or drag an audio file here/i)).toBeInTheDocument();
   });
 
   it("renders the record button", () => {

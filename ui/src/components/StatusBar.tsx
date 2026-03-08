@@ -1,3 +1,4 @@
+import { Alert } from "@aws-amplify/ui-react";
 import { useTranscriber } from "../context/TranscriberContext";
 
 export default function StatusBar() {
@@ -5,16 +6,16 @@ export default function StatusBar() {
 
   if (!message) return null;
 
-  const className =
+  const variation =
     status === "error"
-      ? "status-bar error"
+      ? "error"
       : status === "done"
-        ? "status-bar success"
-        : "status-bar info";
+        ? "success"
+        : "info";
 
   return (
-    <div className={className} role="status">
+    <Alert variation={variation} isDismissible={false} role="status">
       {message}
-    </div>
+    </Alert>
   );
 }

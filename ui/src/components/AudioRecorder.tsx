@@ -1,17 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Button, Flex, Text, Badge } from "@aws-amplify/ui-react";
 import { useTranscriber } from "../context/TranscriberContext";
+import { formatTime } from "../utils/format";
 
 /** Maximum recording duration in seconds. */
 const MAX_SECONDS = 300; // 5 minutes
-
-/** Format seconds as mm:ss. */
-function formatTime(sec: number): string {
-  const m = Math.floor(sec / 60)
-    .toString()
-    .padStart(2, "0");
-  const s = (sec % 60).toString().padStart(2, "0");
-  return `${m}:${s}`;
-}
 
 export default function AudioRecorder() {
   const { setAudioFile, status } = useTranscriber();
@@ -22,15 +15,14 @@ export default function AudioRecorder() {
   const chunksRef = useRef<Blob[]>([]);
   const busy = status === "transcribing";
 
-  /** Stop recording, build a File from chunks, and pass it up. */
   const stopRecording = useCallback(() => {
     recorderRef.current?.stop();
     if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = null;
     setRecording(false);
     setElapsed(0);
   }, []);
 
-  /** Start capturing audio from the microphone. */
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -53,21 +45,23 @@ export default function AudioRecorder() {
       setRecording(true);
       setElapsed(0);
 
+      let ticks = 0;
       const id = setInterval(() => {
-        setElapsed((prev) => prev + 1);
+        ticks += 1;
+        if (ticks >= MAX_SECONDS) {
+          recorder.stop();
+          clearInterval(id);
+          setRecording(false);
+          setElapsed(0);
+          return;
+        }
+        setElapsed(ticks);
       }, 1000);
       timerRef.current = id;
     } catch {
-      // Mic permission denied or unavailable – fail silently.
+      // Mic permission denied or unavailable
     }
   }, [setAudioFile]);
-
-  // Auto-stop at MAX_SECONDS.
-  useEffect(() => {
-    if (recording && elapsed >= MAX_SECONDS) {
-      stopRecording();
-    }
-  }, [recording, elapsed, stopRecording]);
 
   // Cleanup on unmount.
   useEffect(() => {
@@ -79,26 +73,23 @@ export default function AudioRecorder() {
 
   if (recording) {
     return (
-      <div className="recorder">
-        <span className="recording-dot" />
-        <span className="timer" data-testid="timer">
+      <Flex alignItems="center" gap="0.75rem">
+        <Badge variation="error" className="recording-badge">
+          &#9679; REC
+        </Badge>
+        <Text fontFamily="monospace" fontSize="0.875rem" data-testid="timer">
           {formatTime(elapsed)} / {formatTime(MAX_SECONDS)}
-        </span>
-        <button className="btn btn-danger" onClick={stopRecording} type="button">
+        </Text>
+        <Button variation="destructive" size="small" onClick={stopRecording}>
           Stop
-        </button>
-      </div>
+        </Button>
+      </Flex>
     );
   }
 
   return (
-    <button
-      className="btn"
-      onClick={startRecording}
-      disabled={busy}
-      type="button"
-    >
-      Record
-    </button>
+    <Button size="small" onClick={startRecording} isDisabled={busy}>
+      &#127908; Record
+    </Button>
   );
 }

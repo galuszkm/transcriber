@@ -12,6 +12,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@aws-amplify/ui-react": "^6.15.1",
+    "aws-amplify": "^6.16.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

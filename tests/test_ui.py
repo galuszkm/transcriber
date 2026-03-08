@@ -1,4 +1,4 @@
-"""Tests for transcriber.server.ui – static UI serving."""
+"""Tests for transcriber.server.ui - static UI serving."""
 
 from pathlib import Path
 
@@ -8,13 +8,18 @@ from fastapi.testclient import TestClient
 
 from transcriber.server.ui import mount_ui
 
+_INDEX_HTML = (
+    "<html><body>"
+    '{% if server_config_json is defined %}<script>window.__SERVER_CONFIG__ = '
+    "{{ server_config_json }};</script>{% endif %}"
+    "<div>hello</div></body></html>"
+)
+
 
 @pytest.fixture()
 def static_dir(tmp_path: Path) -> Path:
-    """Create a minimal static directory with an index.html."""
-    (tmp_path / "index.html").write_text(
-        "<html><body>hello</body></html>", encoding="utf-8"
-    )
+    """Create a minimal static directory with an index.html template."""
+    (tmp_path / "index.html").write_text(_INDEX_HTML, encoding="utf-8")
     css = tmp_path / "css"
     css.mkdir()
     (css / "index.css").write_text("body{}", encoding="utf-8")
@@ -41,6 +46,13 @@ class TestMountUI:
         assert resp.status_code == 200
         assert "hello" in resp.text
         assert resp.headers["cache-control"] == "no-cache"
+
+    def test_ui_injects_server_config(self, app_with_ui: FastAPI) -> None:
+        client = TestClient(app_with_ui)
+        resp = client.get("/ui")
+        assert "__SERVER_CONFIG__" in resp.text
+        assert "apiBaseUrl" in resp.text
+        assert "staticUrl" in resp.text
 
     def test_static_css(self, app_with_ui: FastAPI) -> None:
         client = TestClient(app_with_ui)

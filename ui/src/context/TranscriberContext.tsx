@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import {
   createContext,
   useCallback,
@@ -12,24 +13,21 @@ import { transcribeFile } from "../api/transcribe";
 /** Possible status values for the transcription workflow. */
 export type Status = "idle" | "transcribing" | "done" | "error";
 
-interface TranscriberState {
-  /** The audio file selected or recorded by the user. */
-  audioFile: File | null;
-  /** Current workflow status. */
-  status: Status;
-  /** Human‑readable progress / status message. */
-  message: string;
-  /** Transcription result, when status is "done". */
-  transcript: TranscribeResponse | null;
+/** Which transcript view is active. */
+export type TranscriptView = "segments" | "script" | "plain";
 
-  /** Set audio file (from upload or recording). */
+interface TranscriberState {
+  audioFile: File | null;
+  status: Status;
+  message: string;
+  transcript: TranscribeResponse | null;
+  view: TranscriptView;
+
   setAudioFile: (file: File | null) => void;
-  /** Submit the current audio file for transcription. */
   submit: () => void;
-  /** Cancel an in-flight transcription request. */
   cancel: () => void;
-  /** Reset everything back to idle. */
   reset: () => void;
+  setView: (view: TranscriptView) => void;
 }
 
 const TranscriberContext = createContext<TranscriberState | null>(null);
@@ -39,6 +37,7 @@ export function TranscriberProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
   const [transcript, setTranscript] = useState<TranscribeResponse | null>(null);
+  const [view, setView] = useState<TranscriptView>("segments");
   const abortRef = useRef<AbortController | null>(null);
 
   const submit = useCallback(() => {
@@ -48,7 +47,7 @@ export function TranscriberProvider({ children }: { children: ReactNode }) {
     abortRef.current = ctrl;
 
     setStatus("transcribing");
-    setMessage("Uploading and transcribing…");
+    setMessage("Uploading and transcribing...");
     setTranscript(null);
 
     transcribeFile(audioFile, ctrl.signal)
@@ -88,10 +87,12 @@ export function TranscriberProvider({ children }: { children: ReactNode }) {
         status,
         message,
         transcript,
+        view,
         setAudioFile,
         submit,
         cancel,
         reset,
+        setView,
       }}
     >
       {children}
@@ -107,3 +108,4 @@ export function useTranscriber(): TranscriberState {
   }
   return ctx;
 }
+

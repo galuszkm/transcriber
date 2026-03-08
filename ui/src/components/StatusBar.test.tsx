@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import StatusBar from "../components/StatusBar";
+import StatusBar from "./StatusBar";
 import { TranscriberProvider } from "../context/TranscriberContext";
 
 describe("StatusBar", () => {
@@ -10,6 +10,6 @@ describe("StatusBar", () => {
         <StatusBar />
       </TranscriberProvider>,
     );
-    expect(container.querySelector(".status-bar")).toBeNull();
+    expect(container.querySelector("[role='status']")).toBeNull();
   });
 });

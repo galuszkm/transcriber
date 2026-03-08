@@ -6,6 +6,9 @@
     <title>Transcriber</title>
   </head>
   <body>
+    {% if server_config_json is defined %}
+    <script>window.__SERVER_CONFIG__ = {{ server_config_json }};</script>
+    {% endif %}
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

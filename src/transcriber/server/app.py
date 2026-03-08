@@ -60,7 +60,7 @@ def create_app(config: TranscriptionConfig | None = None) -> FastAPI:
     if _STATIC_DIR.is_dir():
         mount_ui(app, _STATIC_DIR)
     else:
-        logger.info("UI static files not found at %s – /ui disabled.", _STATIC_DIR)
+        logger.info("UI static files not found at %s - /ui disabled.", _STATIC_DIR)
 
     return app
 
