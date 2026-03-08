@@ -29,9 +29,9 @@ reference implementation.
 
 | Requirement | Detail | Source |
 |---|---|---|
-| **Port** | Container must listen on **port 8080** (overridable via `SAGEMAKER_BIND_TO_PORT` env var). | [`aws/amazon-sagemaker-examples` — `main.py`](https://github.com/aws/amazon-sagemaker-examples/blob/default/archived/inference_pipeline_custom_containers/containers/postprocessor/docker/code/main.py) |
+| **Port** | Container must listen on **port 8080** (the official SageMaker toolkit uses `SAGEMAKER_BIND_TO_PORT` env var; this project uses `SAGEMAKER_PORT` for the same purpose). | [`aws/amazon-sagemaker-examples` — `main.py`](https://github.com/aws/amazon-sagemaker-examples/blob/default/archived/inference_pipeline_custom_containers/containers/postprocessor/docker/code/main.py) |
 | **`GET /ping`** | Health-check endpoint.  Must return **HTTP 200** when healthy (model loaded). SageMaker calls this periodically. | [`aws/amazon-sagemaker-examples` — `preprocessing.py`](https://github.com/aws/amazon-sagemaker-examples/blob/default/archived/byoc-nginx-python/featurizer/code/preprocessing.py) |
-| **`POST /invocations`** | Inference endpoint.  Receives audio payload, returns prediction JSON.  Must respond within **60 seconds** (standard) or **8 minutes** (streaming). Max payload **25 MB**. | [SageMaker Inference Toolkit — `parameters.py`](https://github.com/aws/sagemaker-pytorch-inference-toolkit/blob/master/src/sagemaker_inference/parameters.py) |
+| **`POST /invocations`** | Inference endpoint.  Receives audio payload, returns prediction JSON.  Must respond within **60 seconds** for standard real-time endpoints.  Max payload **25 MB**. | [SageMaker Inference Toolkit — `parameters.py`](https://github.com/aws/sagemaker-pytorch-inference-toolkit/blob/master/src/sagemaker_inference/parameters.py) |
 | **Model artifacts** | SageMaker unpacks `model.tar.gz` from S3 into `/opt/ml/model` at container startup.  The container must be able to load models from this path. | [AWS docs: *Use Your Own Inference Code*](https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html) |
 | **`serve` argument** | SageMaker invokes the container with `serve` as the first CLI argument (i.e. `docker run <image> serve`). | [AWS example — `main.py` entrypoint check](https://github.com/aws/amazon-sagemaker-examples/blob/default/archived/inference_pipeline_custom_containers/containers/postprocessor/docker/code/main.py) |
 | **Logging** | All logs to `stdout`/`stderr` for CloudWatch collection. | General SageMaker guidance |
@@ -67,7 +67,7 @@ reference implementation.
 | Limitation | Detail |
 |---|---|
 | **WebSocket not supported** | SageMaker real-time endpoints only support HTTP POST/GET.  The `/ws/transcribe` WebSocket endpoint **will not work** on SageMaker.  Use the HTTP endpoints instead. ([Source](https://github.com/aws/sagemaker-inference-toolkit)) |
-| **60-second inference timeout** | Standard SageMaker endpoints timeout after 60 seconds.  Long audio files may exceed this.  Mitigations: use **Asynchronous Inference** (up to 1 hour timeout), or select a faster model size (`small` instead of `large-v3`). ([Source](https://docs.aws.amazon.com/sagemaker/latest/dg/async-inference.html)) |
+| **60-second inference timeout** | Standard SageMaker real-time endpoints timeout after 60 seconds ([source](https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_runtime_InvokeEndpoint.html)).  Long audio files may exceed this.  Mitigations: use **Asynchronous Inference** (up to 1 hour timeout), or select a faster model size (`small` instead of `large-v3`). ([Async Inference docs](https://docs.aws.amazon.com/sagemaker/latest/dg/async-inference.html)) |
 | **25 MB payload limit** | Audio files larger than 25 MB must be pre-uploaded to S3 and passed as a reference, or use SageMaker Asynchronous Inference (up to 1 GB). |
 | **No SSE via standard `/invocations`** | Streaming progress via SSE requires the `InvokeEndpointWithResponseStream` API on the client side.  Standard `InvokeEndpoint` returns a single response. |
 
