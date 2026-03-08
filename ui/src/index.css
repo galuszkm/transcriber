@@ -21,6 +21,50 @@ body {
   color: var(--amplify-colors-font-tertiary, #666);
 }
 
+/* ---- App shell ---- */
+.app-shell {
+  padding: 1rem 1rem;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ---- Two-column layout ---- */
+.two-col {
+  display: flex;
+  gap: 1rem;
+  flex: 1;
+  min-height: 0; /* allow children to shrink */
+}
+
+.col-transcript {
+  flex: 7;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.col-sidebar {
+  flex: 3;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+}
+
+/* Stack on narrow screens */
+@media (max-width: 768px) {
+  .two-col {
+    flex-direction: column;
+  }
+  .col-sidebar {
+    min-width: unset;
+  }
+  .app-shell {
+    height: auto;
+    overflow: visible;
+  }
+}
+
 /* Upload area */
 .upload-area {
   border: 2px dashed var(--amplify-colors-border-primary, #d5dbdb);
@@ -50,7 +94,7 @@ body {
 
 /* Transcript card */
 .transcript-card {
-  margin-top: 0.5rem;
+  margin-top: 0;
 }
 
 /* Segments view */

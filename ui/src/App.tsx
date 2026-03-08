@@ -43,20 +43,36 @@ function Controls() {
 }
 
 function AppContent() {
-  const { status } = useTranscriber();
+  const { status, transcript } = useTranscriber();
+  const hasTranscript = status === "done" && transcript;
 
   return (
-    <Flex direction="column" maxWidth="800px" margin="0 auto" padding="2rem 1rem" gap="1rem">
+    <Flex direction="column" className="app-shell" gap="0.75rem">
       <Heading level={3}>Transcriber</Heading>
       <StatusBar />
-      <Controls />
-      {status === "transcribing" && (
-        <Flex justifyContent="center" padding="1rem">
-          <Loader size="large" />
+
+      {!hasTranscript ? (
+        /* ---------- Single-column: full-width controls ---------- */
+        <Flex direction="column" gap="1rem">
+          <Controls />
+          {status === "transcribing" && (
+            <Flex justifyContent="center" padding="1rem">
+              <Loader size="large" />
+            </Flex>
+          )}
         </Flex>
+      ) : (
+        /* ---------- Two-column: transcript left, controls right ---------- */
+        <div className="two-col">
+          <div className="col-transcript">
+            <TranscriptDisplay />
+          </div>
+          <div className="col-sidebar">
+            <Controls />
+            <AudioPlayer />
+          </div>
+        </div>
       )}
-      <TranscriptDisplay />
-      <AudioPlayer />
     </Flex>
   );
 }
