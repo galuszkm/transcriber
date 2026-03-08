@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Flex, Text, Badge } from "@aws-amplify/ui-react";
+import { FiMic, FiSquare } from "react-icons/fi";
 import { useTranscriber } from "../context/TranscriberContext";
 import { formatTime } from "../utils/format";
 
@@ -81,7 +82,8 @@ export default function AudioRecorder() {
         <Text fontFamily="monospace" fontSize="0.875rem" data-testid="timer">
           {formatTime(elapsed)} / {formatTime(MAX_SECONDS)}
         </Text>
-        <Button variation="destructive" size="small" onClick={stopRecording}>
+        <Button variation="destructive" size="small" onClick={stopRecording} className="btn-icon">
+          <FiSquare size={14} />
           Stop
         </Button>
       </Flex>
@@ -89,8 +91,9 @@ export default function AudioRecorder() {
   }
 
   return (
-    <Button size="small" onClick={startRecording} isDisabled={busy}>
-      &#127908; Record
+    <Button size="small" onClick={startRecording} isDisabled={busy} className="btn-icon">
+      <FiMic size={14} />
+      Record
     </Button>
   );
 }

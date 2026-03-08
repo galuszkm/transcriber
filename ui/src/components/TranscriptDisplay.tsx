@@ -16,8 +16,8 @@ export default function TranscriptDisplay() {
 
   return (
     <Card variation="outlined" className="transcript-card">
-      <Flex direction="column" gap="0.75rem">
-        <Flex justifyContent="space-between" alignItems="center" wrap="wrap">
+      <Flex direction="column" gap="0.75rem" style={{ flex: 1, minHeight: 0 }}>
+        <Flex justifyContent="space-between" alignItems="center" wrap="wrap" gap="0.5rem">
           <Heading level={4}>Transcript</Heading>
           <TranscriptToolbar transcript={transcript} />
         </Flex>

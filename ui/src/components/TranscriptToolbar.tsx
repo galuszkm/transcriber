@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Flex, Menu, MenuItem } from "@aws-amplify/ui-react";
+import { FiCopy, FiCheck, FiDownload } from "react-icons/fi";
 import type { TranscribeResponse } from "../types";
 import {
   toPlainText,
@@ -35,10 +36,11 @@ export default function TranscriptToolbar({ transcript }: Props) {
   }, []);
 
   return (
-    <Flex gap="0.5rem" wrap="wrap">
+    <Flex gap="0.25rem" alignItems="center">
       <Menu trigger={
-        <Button size="small" variation="link">
-          {copied ? "\u2713 Copied" : "\u2398 Copy"}
+        <Button size="small" variation="link" className="btn-icon">
+          {copied ? <FiCheck /> : <FiCopy />}
+          {copied ? "Copied" : "Copy"}
         </Button>
       }>
         <MenuItem onClick={() => handleCopy(toPlainText(transcript))}>
@@ -56,8 +58,9 @@ export default function TranscriptToolbar({ transcript }: Props) {
       </Menu>
 
       <Menu trigger={
-        <Button size="small" variation="link">
-          &#8615; Download
+        <Button size="small" variation="link" className="btn-icon">
+          <FiDownload />
+          Download
         </Button>
       }>
         <MenuItem

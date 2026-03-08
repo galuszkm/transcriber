@@ -23,7 +23,7 @@ body {
 
 /* ---- App shell ---- */
 .app-shell {
-  padding: 1rem 1rem;
+  padding: 2rem 3rem;
   height: 100vh;
   overflow: hidden;
 }
@@ -31,7 +31,7 @@ body {
 /* ---- Two-column layout ---- */
 .two-col {
   display: flex;
-  gap: 1rem;
+  gap: 1.5rem;
   flex: 1;
   min-height: 0; /* allow children to shrink */
 }
@@ -39,16 +39,50 @@ body {
 .col-transcript {
   flex: 7;
   min-width: 0;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .col-sidebar {
   flex: 3;
-  min-width: 220px;
+  min-width: 260px;
   display: flex;
   flex-direction: column;
   gap: 1rem;
   overflow-y: auto;
+}
+
+/* Make the transcript card fill the column and scroll internally */
+.transcript-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The Flex inside the Card must also stretch */
+.transcript-card > [class*="flex"] {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tabs container fills remaining space */
+.transcript-card [data-amplify-tabs] {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Tab panels scroll internally */
+.transcript-card [role="tabpanel"] {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 /* Stack on narrow screens */
@@ -59,7 +93,11 @@ body {
   .col-sidebar {
     min-width: unset;
   }
+  .col-transcript {
+    max-height: 60vh;
+  }
   .app-shell {
+    padding: 1.5rem 1rem;
     height: auto;
     overflow: visible;
   }
@@ -90,11 +128,6 @@ body {
   50% {
     opacity: 0.4;
   }
-}
-
-/* Transcript card */
-.transcript-card {
-  margin-top: 0;
 }
 
 /* Segments view */
@@ -152,13 +185,33 @@ body {
   line-height: 1.7;
 }
 
-/* Plain text view */
+/* Plain text view – textarea fills the panel */
+.transcript-plain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
 .transcript-plain textarea {
-  resize: vertical;
+  flex: 1;
+  resize: none;
   min-height: 200px;
 }
 
 /* Audio player */
 .audio-player-card audio {
   border-radius: var(--amplify-radii-small, 4px);
+}
+
+/* Icon alignment helpers */
+.icon-inline {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }

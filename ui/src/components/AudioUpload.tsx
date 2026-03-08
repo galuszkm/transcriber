@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { Button, Flex, Text, View } from "@aws-amplify/ui-react";
+import { FiUploadCloud, FiFile } from "react-icons/fi";
 import { useTranscriber } from "../context/TranscriberContext";
 
 const ACCEPTED = "audio/*,.wav,.mp3,.m4a,.ogg,.flac,.webm";
@@ -54,15 +55,20 @@ export default function AudioUpload() {
         style={{ display: "none" }}
       />
       <Flex direction="column" alignItems="center" gap="0.25rem">
-        <Text fontSize="1.5rem">&#128190;</Text>
         {audioFile ? (
-          <Text fontWeight="bold" data-testid="file-name">
-            {audioFile.name}
-          </Text>
+          <>
+            <FiFile size={24} />
+            <Text fontWeight="bold" data-testid="file-name">
+              {audioFile.name}
+            </Text>
+          </>
         ) : (
-          <Text color="font.tertiary">
-            Click or drag an audio file here
-          </Text>
+          <>
+            <FiUploadCloud size={28} />
+            <Text color="font.tertiary">
+              Click or drag an audio file here
+            </Text>
+          </>
         )}
         <Button size="small" variation="link" isDisabled={busy}>
           Browse files
