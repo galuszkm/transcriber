@@ -284,7 +284,7 @@ uv run trans-cli meeting.mp3 -f json -o ./transcripts/meeting
 HTTP/WebSocket server for integrating transcription into other applications. Runs a single-GPU inference worker with a FIFO queue.
 
 ```bash
-# Start server (defaults: cuda, large-v3, port 8000)
+# Start server (defaults: cuda, large-v3, 0.0.0.0:8080)
 uv run trans-server
 
 # Custom port and model
@@ -298,8 +298,8 @@ uv run trans-server -d cpu --port 9876
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--host` | Bind address | `127.0.0.1` |
-| `--port` | Port number | `8000` |
+| `--host` | Bind address | `0.0.0.0` |
+| `--port` | Port number | `8080` |
 | `-m, --model` | Whisper model size | `large-v3` |
 | `-d, --device` | Compute device | `cuda` |
 | `-c, --compute-type` | Precision | `auto` |
@@ -419,7 +419,7 @@ wav = stop_recording()
 
 result = transcribe_sse(
     wav,
-    url="http://localhost:8000",
+    url="http://localhost:8080",
     diarize=True,
     on_progress=lambda stage, msg: print(f"[{stage}] {msg}"),
 )
@@ -438,6 +438,17 @@ print(result["transcript"])
 | `transcribe_sse(wav_bytes, *, url, diarize, timeout, on_progress)` | Stream via SSE; calls `on_progress(stage, message)` for each progress event; returns parsed result dict — prefer over REST for large files |
 | `transcribe_ws(wav_bytes, *, url, diarize)` | Send over WebSocket; returns parsed result dict |
 | `RecordingError` | Raised on invalid operations (already recording, not recording) |
+
+
+## Cloud Deployment (AWS SageMaker)
+
+The server is ready to deploy on AWS SageMaker as a **Bring Your Own Container (BYOC)** endpoint — port 8080 and `0.0.0.0` binding are the defaults. A `Dockerfile` and entrypoint script are included at the repository root.
+
+See **[SAGEMAKER.md](SAGEMAKER.md)** for the full deployment guide covering:
+- Building and pushing the Docker image to ECR
+- Real-time endpoints (≤ 60 s, ≤ 25 MB)
+- Asynchronous endpoints (up to 1 hour, up to 1 GB payload)
+- boto3 examples for model creation, endpoint deployment, and invocation
 
 
 ## Development

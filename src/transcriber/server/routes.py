@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import AsyncGenerator
+from typing import Any
 
 from fastapi import (
     APIRouter,
@@ -33,21 +34,144 @@ router = APIRouter()
 
 
 # ---------------------------------------------------------------------------
-# Health
+# Shared helpers
 # ---------------------------------------------------------------------------
 
 
-@router.get("/health", response_model=HealthResponse)
-async def health(request: Request) -> HealthResponse:
-    """Return service readiness status."""
+async def _health_response(request: Request) -> UTF8JSONResponse:
+    """Build a health response with appropriate HTTP status code.
+
+    Returns HTTP 200 when the model is loaded and ready, or HTTP 503
+    while still loading.  Used by both ``/health`` and ``/ping``.
+    """
     worker = request.app.state.worker
     config = request.app.state.config
-    return HealthResponse(
+    body = HealthResponse(
         status="ready" if worker.is_ready else "loading",
         model_loaded=worker.is_ready,
         model_size=config.model,
         device=config.device,
         queue_size=worker.queue_size,
+    )
+    status_code = 200 if worker.is_ready else 503
+    return UTF8JSONResponse(content=body.model_dump(), status_code=status_code)
+
+
+async def _submit_transcription(
+    request: Request,
+    audio: Any,
+    *,
+    diarize: bool = False,
+    source_label: str = "<api>",
+) -> UTF8JSONResponse:
+    """Submit audio to the inference worker and return the result.
+
+    Shared by all transcription endpoints (``/invocations``,
+    ``/transcribe``, ``/transcribe/json``, ``/transcribe/raw``).
+    """
+    worker = request.app.state.worker
+    result = await worker.submit(audio, diarize=diarize, source_label=source_label)
+    return UTF8JSONResponse(content=TranscribeResponse.from_result(result).model_dump())
+
+
+# ---------------------------------------------------------------------------
+# Health — shared by /health and /ping
+# ---------------------------------------------------------------------------
+
+
+@router.get("/health", response_model=HealthResponse)
+async def health(request: Request) -> UTF8JSONResponse:
+    """Return service readiness status with model and queue details."""
+    return await _health_response(request)
+
+
+@router.get("/ping", response_model=HealthResponse)
+async def ping(request: Request) -> UTF8JSONResponse:
+    """SageMaker health-check endpoint (also usable outside SageMaker).
+
+    Returns HTTP 200 when the model is loaded, or HTTP 503 while still
+    loading.  SageMaker calls this endpoint periodically and expects a
+    response within 2 seconds.
+
+    See: https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html
+    """
+    return await _health_response(request)
+
+
+# ---------------------------------------------------------------------------
+# /invocations — SageMaker inference (content-type auto-detection)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/invocations", response_model=TranscribeResponse)
+async def invocations(request: Request) -> UTF8JSONResponse | JSONResponse:
+    """SageMaker inference endpoint.
+
+    Accepts audio via ``application/octet-stream`` (raw bytes),
+    ``application/json`` (JSON body with ``audio_base64``), or
+    ``multipart/form-data`` (file upload).
+
+    An optional ``diarize`` query parameter enables speaker diarization.
+
+    See: https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html
+    """
+    content_type = (request.headers.get("content-type") or "").lower()
+
+    # Determine diarize flag from query parameter.
+    diarize = request.query_params.get("diarize", "false").lower() in {
+        "true",
+        "1",
+        "yes",
+    }
+
+    if "application/json" in content_type:
+        body = await request.json()
+        audio_b64 = body.get("audio_base64")
+        if not audio_b64:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "JSON body must include 'audio_base64' field."},
+            )
+        diarize = diarize or body.get("diarize", False)
+        audio = decode_base64_audio(audio_b64)
+        label = "<invocations-json>"
+    elif "application/octet-stream" in content_type:
+        raw_bytes = await request.body()
+        audio = decode_audio_bytes(raw_bytes)
+        label = "<invocations-raw>"
+    elif "multipart/form-data" in content_type:
+        form = await request.form()
+        upload = form.get("file")
+        if upload is None:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Multipart form must include 'file' field."},
+            )
+        raw_bytes = await upload.read()  # type: ignore[union-attr]
+        audio = decode_audio_bytes(raw_bytes)
+        label = (
+            getattr(upload, "filename", "<invocations-upload>")
+            or "<invocations-upload>"
+        )
+    else:
+        # Default: treat as raw bytes for maximum compatibility.
+        raw_bytes = await request.body()
+        if not raw_bytes:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "detail": (
+                        "Empty request body. Send audio as raw bytes "
+                        "(application/octet-stream), JSON with 'audio_base64', "
+                        "or multipart form with 'file' field."
+                    )
+                },
+            )
+        audio = decode_audio_bytes(raw_bytes)
+        label = "<invocations>"
+
+    return await _submit_transcription(
+        request, audio, diarize=diarize, source_label=label
     )
 
 
@@ -66,10 +190,8 @@ async def transcribe(
     file: UploadFile | None = _FILE_NONE,
     audio_base64: str | None = _FORM_NONE,
     diarize: bool = Query(default=False),
-) -> TranscribeResponse | JSONResponse:
+) -> UTF8JSONResponse | JSONResponse:
     """Transcribe audio from a file upload or base64 form field."""
-    worker = request.app.state.worker
-
     if file is not None:
         raw_bytes = await file.read()
         audio = decode_audio_bytes(raw_bytes)
@@ -85,8 +207,9 @@ async def transcribe(
             },
         )
 
-    result = await worker.submit(audio, diarize=diarize, source_label=label)
-    return UTF8JSONResponse(content=TranscribeResponse.from_result(result).model_dump())
+    return await _submit_transcription(
+        request, audio, diarize=diarize, source_label=label
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -100,10 +223,10 @@ async def transcribe_json(
     body: TranscribeRequest,
 ) -> UTF8JSONResponse:
     """Transcribe audio from a JSON body with base64-encoded data."""
-    worker = request.app.state.worker
     audio = decode_base64_audio(body.audio_base64)
-    result = await worker.submit(audio, diarize=body.diarize, source_label="<json>")
-    return UTF8JSONResponse(content=TranscribeResponse.from_result(result).model_dump())
+    return await _submit_transcription(
+        request, audio, diarize=body.diarize, source_label="<json>"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -117,11 +240,11 @@ async def transcribe_raw(
     diarize: bool = Query(default=False),
 ) -> UTF8JSONResponse:
     """Transcribe audio from raw bytes (Content-Type: application/octet-stream)."""
-    worker = request.app.state.worker
     raw_bytes = await request.body()
     audio = decode_audio_bytes(raw_bytes)
-    result = await worker.submit(audio, diarize=diarize, source_label="<raw>")
-    return UTF8JSONResponse(content=TranscribeResponse.from_result(result).model_dump())
+    return await _submit_transcription(
+        request, audio, diarize=diarize, source_label="<raw>"
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -5,6 +5,12 @@ Start the server::
     trans-server                               # defaults
     trans-server --model large-v3 --port 9000  # custom
     trans-server --device cpu                  # CPU mode
+
+The server binds to ``0.0.0.0:8080`` by default, which satisfies the
+AWS SageMaker container contract out of the box.  SageMaker-compatible
+``GET /ping`` and ``POST /invocations`` routes are always registered.
+
+See ``SAGEMAKER.md`` in the repository root for a full deployment guide.
 """
 
 from __future__ import annotations
@@ -73,14 +79,14 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--host",
-        default="127.0.0.1",
-        help="Bind host (default: 127.0.0.1)",
+        default="0.0.0.0",  # noqa: S104  # nosec B104
+        help="Bind host (default: 0.0.0.0)",
     )
     parser.add_argument(
         "--port",
         type=int,
-        default=8000,
-        help="Bind port (default: 8000)",
+        default=8080,
+        help="Bind port (default: 8080)",
     )
 
     add_pipeline_args(parser, default_device="cuda")
