@@ -5,12 +5,24 @@ Start the server::
     trans-server                               # defaults
     trans-server --model large-v3 --port 9000  # custom
     trans-server --device cpu                  # CPU mode
+
+SageMaker compatibility
+~~~~~~~~~~~~~~~~~~~~~~~
+
+When deployed inside an AWS SageMaker inference container the service
+must listen on port **8080** and expose ``GET /ping`` and
+``POST /invocations`` endpoints.  Set ``SAGEMAKER_PORT=8080`` (or
+pass ``--port 8080``) to bind on the correct port.  The SageMaker-
+compatible routes are registered automatically.
+
+See ``SAGEMAKER.md`` in the repository root for a full deployment guide.
 """
 
 from __future__ import annotations
 
 import argparse
 import logging
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -23,6 +35,13 @@ from .schemas import UTF8JSONResponse
 from .worker import InferenceWorker
 
 logger = logging.getLogger(__name__)
+
+#: Default port.  Overridden to **8080** when the ``SAGEMAKER_PORT``
+#: environment variable is set (SageMaker contract).
+_DEFAULT_PORT: int = int(os.environ.get("SAGEMAKER_PORT", "8000"))
+
+#: Default bind host.  Inside a container ``0.0.0.0`` is typical.
+_DEFAULT_HOST: str = os.environ.get("SAGEMAKER_BIND", "127.0.0.1")
 
 
 def create_app(config: TranscriptionConfig | None = None) -> FastAPI:
@@ -73,14 +92,14 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--host",
-        default="127.0.0.1",
-        help="Bind host (default: 127.0.0.1)",
+        default=_DEFAULT_HOST,
+        help=f"Bind host (default: {_DEFAULT_HOST})",
     )
     parser.add_argument(
         "--port",
         type=int,
-        default=8000,
-        help="Bind port (default: 8000)",
+        default=_DEFAULT_PORT,
+        help=f"Bind port (default: {_DEFAULT_PORT})",
     )
 
     add_pipeline_args(parser, default_device="cuda")

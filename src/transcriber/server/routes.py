@@ -16,7 +16,7 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
 )
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from .audio_decode import decode_audio_bytes, decode_base64_audio
 from .schemas import (
@@ -49,6 +49,99 @@ async def health(request: Request) -> HealthResponse:
         device=config.device,
         queue_size=worker.queue_size,
     )
+
+
+# ---------------------------------------------------------------------------
+# SageMaker-compatible endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/ping")
+async def ping(request: Request) -> Response:
+    """SageMaker health-check endpoint.
+
+    Returns HTTP 200 when the model is loaded, or HTTP 503 while still
+    loading.  SageMaker calls this endpoint periodically and expects a
+    response within 2 seconds.
+
+    See: https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html
+    """
+    worker = request.app.state.worker
+    if worker.is_ready:
+        return Response(status_code=200)
+    return Response(status_code=503)
+
+
+@router.post("/invocations", response_model=TranscribeResponse)
+async def invocations(request: Request) -> UTF8JSONResponse | JSONResponse:
+    """SageMaker inference endpoint.
+
+    Accepts audio via ``application/octet-stream`` (raw bytes),
+    ``application/json`` (JSON body with ``audio_base64``), or
+    ``multipart/form-data`` (file upload).
+
+    An optional ``diarize`` query parameter enables speaker diarization.
+
+    See: https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html
+    """
+    worker = request.app.state.worker
+    content_type = (request.headers.get("content-type") or "").lower()
+
+    # Determine diarize flag from query parameter.
+    diarize = request.query_params.get("diarize", "false").lower() in {
+        "true",
+        "1",
+        "yes",
+    }
+
+    if "application/json" in content_type:
+        body = await request.json()
+        audio_b64 = body.get("audio_base64")
+        if not audio_b64:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "JSON body must include 'audio_base64' field."},
+            )
+        diarize = diarize or body.get("diarize", False)
+        audio = decode_base64_audio(audio_b64)
+        label = "<invocations-json>"
+    elif "application/octet-stream" in content_type:
+        raw_bytes = await request.body()
+        audio = decode_audio_bytes(raw_bytes)
+        label = "<invocations-raw>"
+    elif "multipart/form-data" in content_type:
+        form = await request.form()
+        upload = form.get("file")
+        if upload is None:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Multipart form must include 'file' field."},
+            )
+        raw_bytes = await upload.read()  # type: ignore[union-attr]
+        audio = decode_audio_bytes(raw_bytes)
+        label = (
+            getattr(upload, "filename", "<invocations-upload>")
+            or "<invocations-upload>"
+        )
+    else:
+        # Default: treat as raw bytes for maximum compatibility.
+        raw_bytes = await request.body()
+        if not raw_bytes:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "detail": (
+                        "Empty request body. Send audio as raw bytes "
+                        "(application/octet-stream), JSON with 'audio_base64', "
+                        "or multipart form with 'file' field."
+                    )
+                },
+            )
+        audio = decode_audio_bytes(raw_bytes)
+        label = "<invocations>"
+
+    result = await worker.submit(audio, diarize=diarize, source_label=label)
+    return UTF8JSONResponse(content=TranscribeResponse.from_result(result).model_dump())
 
 
 # ---------------------------------------------------------------------------
