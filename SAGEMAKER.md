@@ -351,4 +351,3 @@ All endpoints are available at the container level (locally or on SageMaker):
 - [SageMaker Examples — BYOC (GitHub)](https://github.com/aws/amazon-sagemaker-examples)
 - [InvokeEndpointWithResponseStream API](https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_runtime_InvokeEndpointWithResponseStream.html)
 - [60-second real-time timeout — confirmed limitation](https://github.com/aws/sagemaker-python-sdk/issues/1119)
-
