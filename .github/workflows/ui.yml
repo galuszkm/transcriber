@@ -1,0 +1,36 @@
+name: UI Check & Test
+
+on:
+  pull_request:
+    paths:
+      - "ui/**"
+
+jobs:
+  ui:
+    name: UI Lint, Type-check & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ui
+        run: npm ci
+
+      - name: Lint
+        working-directory: ui
+        run: npm run lint
+
+      - name: Type-check
+        working-directory: ui
+        run: npx tsc -b --noEmit
+
+      - name: Test
+        working-directory: ui
+        run: npm run test

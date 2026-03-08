@@ -19,6 +19,7 @@ import argparse
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 
@@ -26,9 +27,12 @@ from ..cli.parser import add_pipeline_args
 from ..core.config import TranscriptionConfig
 from .routes import router
 from .schemas import UTF8JSONResponse
+from .ui import mount_ui
 from .worker import InferenceWorker
 
 logger = logging.getLogger(__name__)
+
+_STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 
 def create_app(config: TranscriptionConfig | None = None) -> FastAPI:
@@ -57,6 +61,13 @@ def create_app(config: TranscriptionConfig | None = None) -> FastAPI:
     app.state.worker = worker
     app.state.config = config
     app.include_router(router)
+
+    # Mount the UI if the static directory exists.
+    if _STATIC_DIR.is_dir():
+        mount_ui(app, _STATIC_DIR)
+    else:
+        logger.info("UI static files not found at %s - /ui disabled.", _STATIC_DIR)
+
     return app
 
 
