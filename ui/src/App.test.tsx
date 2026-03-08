@@ -5,7 +5,7 @@ import App from "./App";
 describe("App", () => {
   it("renders the heading", () => {
     render(<App />);
-    expect(screen.getByRole("heading", { name: /transcriber/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /transcription service/i })).toBeInTheDocument();
   });
 
   it("renders the upload area", () => {
@@ -32,6 +32,6 @@ describe("App", () => {
 
   it("renders the diarize checkbox", () => {
     render(<App />);
-    expect(screen.getByLabelText(/diarization/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/diarize/i)).toBeInTheDocument();
   });
 });

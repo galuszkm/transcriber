@@ -1,6 +1,11 @@
 import { Heading, Text, View } from "@aws-amplify/ui-react";
 import type { Segment } from "../types";
 
+const speakerIdx = (speaker: string): number => {
+  const m = speaker.match(/(\d+)$/);
+  return m ? Number(m[1]) % 5 : 0;
+};
+
 interface Props {
   segments: Segment[];
 }
@@ -20,7 +25,7 @@ interface SpeakerGroup {
  * @param segments - Transcript segments, each with optional speaker.
  * @returns Array of speaker groups with their concatenated lines.
  */
-function groupBySpeaker(segments: Segment[]): SpeakerGroup[] {
+const groupBySpeaker = (segments: Segment[]): SpeakerGroup[] => {
   const groups: SpeakerGroup[] = [];
   let current: SpeakerGroup | null = null;
 
@@ -34,7 +39,7 @@ function groupBySpeaker(segments: Segment[]): SpeakerGroup[] {
   }
 
   return groups;
-}
+};
 
 /**
  * Renders a movie-script-style transcript grouped by speaker.
@@ -42,14 +47,14 @@ function groupBySpeaker(segments: Segment[]): SpeakerGroup[] {
  * Each speaker gets an uppercase heading, followed by their concatenated text.
  * Only meaningful when diarization is enabled.
  */
-export default function TranscriptScript({ segments }: Props) {
+const TranscriptScript = ({ segments }: Props) => {
   const groups = groupBySpeaker(segments);
 
   return (
     <View className="transcript-script">
       {groups.map((group, i) => (
         <View key={i} className="script-block">
-          <Heading level={5} className="script-speaker">
+          <Heading level={5} className="script-speaker" data-speaker-idx={speakerIdx(group.speaker)}>
             {group.speaker}
           </Heading>
           <Text className="script-text">{group.lines.join(" ")}</Text>
@@ -57,4 +62,6 @@ export default function TranscriptScript({ segments }: Props) {
       ))}
     </View>
   );
-}
+};
+
+export default TranscriptScript;

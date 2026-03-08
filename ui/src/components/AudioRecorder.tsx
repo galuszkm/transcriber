@@ -15,7 +15,7 @@ const MAX_SECONDS = 300;
  * in the transcriber context.
  */
 export default function AudioRecorder() {
-  const { setAudioFile, status } = useTranscriber();
+  const { setAudioFile, setIsRecording, status } = useTranscriber();
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -29,8 +29,9 @@ export default function AudioRecorder() {
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
     setRecording(false);
+    setIsRecording(false);
     setElapsed(0);
-  }, []);
+  }, [setIsRecording]);
 
   /**
    * Request microphone access and start recording.
@@ -54,9 +55,12 @@ export default function AudioRecorder() {
         setAudioFile(file);
       };
 
+      // Clear any previously uploaded file so Transcribe stays disabled while recording.
+      setAudioFile(null);
       recorder.start();
       recorderRef.current = recorder;
       setRecording(true);
+      setIsRecording(true);
       setElapsed(0);
 
       // Auto-stop at the maximum duration.
@@ -68,6 +72,7 @@ export default function AudioRecorder() {
           clearInterval(id);
           timerRef.current = null;
           setRecording(false);
+          setIsRecording(false);
           setElapsed(0);
           return;
         }
@@ -77,7 +82,7 @@ export default function AudioRecorder() {
     } catch {
       // Mic permission denied or unavailable — do nothing
     }
-  }, [setAudioFile]);
+  }, [setAudioFile, setIsRecording]);
 
   // Release mic tracks and clear timer on unmount.
   useEffect(() => {

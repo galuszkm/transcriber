@@ -3,35 +3,42 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
   type ReactNode,
 } from "react";
-import type { TranscribeResponse } from "../types";
-import { transcribeFile } from "../api/transcribe";
+import type { TranscribeResponse, PersistedSettings, Status, TranscriptView, TranscriberState } from "../types";
+import { transcribeFileSSE } from "../api/transcribe";
+import { copyToClipboard, toPlainText } from "../utils/format";
 
-/** Possible status values for the transcription workflow. */
-export type Status = "idle" | "transcribing" | "done" | "error";
+// ---------------------------------------------------------------------------
+// Persisted settings
+// ---------------------------------------------------------------------------
 
-/** Which transcript view tab is active. */
-export type TranscriptView = "segments" | "script" | "plain";
+const SETTINGS_KEY = "transcriber-settings";
 
-/** Shape of the transcriber context consumed by child components. */
-interface TranscriberState {
-  audioFile: File | null;
-  status: Status;
-  message: string;
-  transcript: TranscribeResponse | null;
-  view: TranscriptView;
-  diarize: boolean;
+const SETTINGS_DEFAULTS: PersistedSettings = {
+  diarize: false,
+  autoCopy: false,
+  transcriptCollapsed: false,
+  showDropzone: true,
+  darkMode: false,
+};
 
-  setAudioFile: (file: File | null) => void;
-  setDiarize: (enabled: boolean) => void;
-  submit: () => void;
-  cancel: () => void;
-  reset: () => void;
-  setView: (view: TranscriptView) => void;
+function loadSettings(): PersistedSettings {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) return { ...SETTINGS_DEFAULTS, ...(JSON.parse(raw) as Partial<PersistedSettings>) };
+  } catch {
+    // ignore corrupt data
+  }
+  return SETTINGS_DEFAULTS;
 }
+
+// ---------------------------------------------------------------------------
+// Context
+// ---------------------------------------------------------------------------
 
 const TranscriberContext = createContext<TranscriberState | null>(null);
 
@@ -41,16 +48,34 @@ const TranscriberContext = createContext<TranscriberState | null>(null);
  * Wraps the entire app so any child can call `useTranscriber()` to access
  * audio file, transcription status, results, and control actions.
  */
-export function TranscriberProvider({ children }: { children: ReactNode }) {
+export const TranscriberProvider = ({ children }: { children: ReactNode }) => {
+  // transient state
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [status, setStatus] = useState<Status>("idle");
+  const [stage, setStage] = useState("");
   const [message, setMessage] = useState("");
   const [transcript, setTranscript] = useState<TranscribeResponse | null>(null);
   const [view, setView] = useState<TranscriptView>("segments");
-  const [diarize, setDiarize] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  /** Upload the audio file and start transcription. */
+  // persisted settings — initialised from localStorage once
+  const _s = loadSettings();
+  const [diarize, setDiarize] = useState(_s.diarize);
+  const [autoCopy, setAutoCopy] = useState(_s.autoCopy);
+  const [transcriptCollapsed, setTranscriptCollapsed] = useState(_s.transcriptCollapsed);
+  const [showDropzone, setShowDropzone] = useState(_s.showDropzone);
+  const [darkMode, setDarkMode] = useState(_s.darkMode);
+
+  // persist settings whenever any of them change
+  useEffect(() => {
+    localStorage.setItem(
+      SETTINGS_KEY,
+      JSON.stringify({ diarize, autoCopy, transcriptCollapsed, showDropzone, darkMode }),
+    );
+  }, [diarize, autoCopy, transcriptCollapsed, showDropzone, darkMode]);
+
+  /** Upload the audio file and start transcription via SSE streaming. */
   const submit = useCallback(() => {
     if (!audioFile) return;
 
@@ -58,25 +83,36 @@ export function TranscriberProvider({ children }: { children: ReactNode }) {
     abortRef.current = ctrl;
 
     setStatus("transcribing");
-    setMessage("Uploading and transcribing...");
+    setStage("");
+    setMessage("Uploading…");
     setTranscript(null);
 
-    transcribeFile(audioFile, { signal: ctrl.signal, diarize })
-      .then((result) => {
+    transcribeFileSSE(audioFile, diarize, {
+      signal: ctrl.signal,
+      onProgress: (s, msg) => {
+        setStage(s);
+        setMessage(msg);
+      },
+      onComplete: (result) => {
         setTranscript(result);
+        setStage("");
         setStatus("done");
         setMessage("Transcription complete.");
-      })
-      .catch((err: unknown) => {
+        if (autoCopy) copyToClipboard(toPlainText(result));
+      },
+      onError: (err) => {
         if (err instanceof DOMException && err.name === "AbortError") {
+          setStage("");
           setStatus("idle");
           setMessage("Cancelled.");
           return;
         }
+        setStage("");
         setStatus("error");
-        setMessage(err instanceof Error ? err.message : "Unknown error");
-      });
-  }, [audioFile, diarize]);
+        setMessage(err.message || "Unknown error");
+      },
+    });
+  }, [audioFile, diarize, autoCopy]);
 
   /** Abort an in-progress transcription request. */
   const cancel = useCallback(() => {
@@ -89,6 +125,7 @@ export function TranscriberProvider({ children }: { children: ReactNode }) {
     cancel();
     setAudioFile(null);
     setStatus("idle");
+    setStage("");
     setMessage("");
     setTranscript(null);
   }, [cancel]);
@@ -98,12 +135,23 @@ export function TranscriberProvider({ children }: { children: ReactNode }) {
       value={{
         audioFile,
         status,
+        stage,
         message,
         transcript,
         view,
+        isRecording,
         diarize,
+        autoCopy,
+        transcriptCollapsed,
+        showDropzone,
+        darkMode,
         setAudioFile,
         setDiarize,
+        setAutoCopy,
+        setIsRecording,
+        setTranscriptCollapsed,
+        setShowDropzone,
+        setDarkMode,
         submit,
         cancel,
         reset,
@@ -113,17 +161,17 @@ export function TranscriberProvider({ children }: { children: ReactNode }) {
       {children}
     </TranscriberContext.Provider>
   );
-}
+};
 
 /**
  * Consume the transcriber context.
  *
  * @throws Error if called outside of `<TranscriberProvider>`.
  */
-export function useTranscriber(): TranscriberState {
+export const useTranscriber = (): TranscriberState => {
   const ctx = useContext(TranscriberContext);
   if (!ctx) {
     throw new Error("useTranscriber must be used inside <TranscriberProvider>");
   }
   return ctx;
-}
+};

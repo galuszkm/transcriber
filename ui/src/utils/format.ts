@@ -6,7 +6,7 @@ import type { TranscribeResponse, Segment } from "../types";
  * @param sec - Duration in seconds.
  * @returns Formatted time string, e.g. `"03:45"`.
  */
-export function formatTime(sec: number): string {
+export const formatTime = (sec: number): string => {
   const abs = Math.max(0, sec);
   const m = Math.floor(abs / 60)
     .toString()
@@ -15,7 +15,7 @@ export function formatTime(sec: number): string {
     .toString()
     .padStart(2, "0");
   return `${m}:${s}`;
-}
+};
 
 /**
  * Extract the plain-text transcript from the response.
@@ -23,9 +23,7 @@ export function formatTime(sec: number): string {
  * @param res - Full transcription response.
  * @returns The plain transcript string.
  */
-export function toPlainText(res: TranscribeResponse): string {
-  return res.transcript;
-}
+export const toPlainText = (res: TranscribeResponse): string => res.transcript;
 
 /**
  * Build a movie-script-style transcript grouped by speaker.
@@ -43,7 +41,7 @@ export function toPlainText(res: TranscribeResponse): string {
  * @param res - Full transcription response.
  * @returns The formatted script string.
  */
-export function toScript(res: TranscribeResponse): string {
+export const toScript = (res: TranscribeResponse): string => {
   const lines: string[] = [];
   let lastSpeaker = "";
 
@@ -58,7 +56,7 @@ export function toScript(res: TranscribeResponse): string {
   }
 
   return lines.join("\n");
-}
+};
 
 /**
  * Build a markdown-formatted transcript with timestamps and optional speakers.
@@ -66,7 +64,7 @@ export function toScript(res: TranscribeResponse): string {
  * @param res - Full transcription response.
  * @returns Markdown string ready for copy or download.
  */
-export function toMarkdown(res: TranscribeResponse): string {
+export const toMarkdown = (res: TranscribeResponse): string => {
   const lines: string[] = [
     `# Transcript`,
     "",
@@ -99,7 +97,7 @@ export function toMarkdown(res: TranscribeResponse): string {
   }
 
   return lines.join("\n");
-}
+};
 
 /**
  * Serialize segments to a pretty-printed JSON string.
@@ -107,9 +105,8 @@ export function toMarkdown(res: TranscribeResponse): string {
  * @param segments - Array of transcript segments.
  * @returns Indented JSON string.
  */
-export function toSegmentsJson(segments: Segment[]): string {
-  return JSON.stringify(segments, null, 2);
-}
+export const toSegmentsJson = (segments: Segment[]): string =>
+  JSON.stringify(segments, null, 2);
 
 /**
  * Serialize the full transcription response to a pretty-printed JSON string.
@@ -117,9 +114,8 @@ export function toSegmentsJson(segments: Segment[]): string {
  * @param res - Full transcription response.
  * @returns Indented JSON string.
  */
-export function toFullJson(res: TranscribeResponse): string {
-  return JSON.stringify(res, null, 2);
-}
+export const toFullJson = (res: TranscribeResponse): string =>
+  JSON.stringify(res, null, 2);
 
 /**
  * Trigger a file download in the browser from a string content.
@@ -130,14 +126,14 @@ export function toFullJson(res: TranscribeResponse): string {
  * @param filename - Suggested download filename.
  * @param mime - MIME type for the blob (default: `text/plain`).
  */
-export function downloadFile(
+export const downloadFile = (
   content: string,
   filename: string,
   mime = "text/plain",
-): void {
+): void => {
   const blob = new Blob([content], { type: mime });
   downloadBlob(blob, filename);
-}
+};
 
 /**
  * Trigger a file download in the browser from a Blob or File.
@@ -145,7 +141,7 @@ export function downloadFile(
  * @param blob - The Blob or File to download.
  * @param filename - Suggested download filename.
  */
-export function downloadBlob(blob: Blob, filename: string): void {
+export const downloadBlob = (blob: Blob, filename: string): void => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -154,7 +150,7 @@ export function downloadBlob(blob: Blob, filename: string): void {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-}
+};
 
 /**
  * Copy text to the clipboard.
@@ -162,11 +158,11 @@ export function downloadBlob(blob: Blob, filename: string): void {
  * @param text - The string to copy.
  * @returns `true` if the copy succeeded, `false` otherwise.
  */
-export async function copyToClipboard(text: string): Promise<boolean> {
+export const copyToClipboard = async (text: string): Promise<boolean> => {
   try {
     await navigator.clipboard.writeText(text);
     return true;
   } catch {
     return false;
   }
-}
+};

@@ -5,9 +5,9 @@ import {
   useTranscriber,
 } from "./TranscriberContext";
 
-function wrapper({ children }: { children: React.ReactNode }) {
-  return <TranscriberProvider>{children}</TranscriberProvider>;
-}
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <TranscriberProvider>{children}</TranscriberProvider>
+);
 
 describe("TranscriberContext", () => {
   it("provides initial state", () => {
@@ -52,7 +52,7 @@ describe("TranscriberContext", () => {
   });
 
   it("transitions to transcribing when submit is called with a file", async () => {
-    vi.spyOn(globalThis, "fetch").mockReturnValue(new Promise(() => {}));
+    vi.spyOn(globalThis, "fetch").mockReturnValue(new Promise(() => { }));
 
     const { result } = renderHook(() => useTranscriber(), { wrapper });
 
@@ -61,7 +61,7 @@ describe("TranscriberContext", () => {
     act(() => result.current.submit());
 
     expect(result.current.status).toBe("transcribing");
-    expect(result.current.message).toContain("transcribing");
+    expect(result.current.message).toContain("Uploading…");
 
     vi.restoreAllMocks();
   });

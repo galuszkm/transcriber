@@ -1,0 +1,74 @@
+/* ---- Dark mode: soften font from pure white to light grey ---- */
+[data-amplify-color-mode="dark"] {
+  --amplify-colors-font-primary: #b1b1b1 !important;
+  --amplify-colors-font-tertiary: #85849e !important;
+  --amplify-colors-font-secondary: #757575 !important;
+}
+
+/* ---- Checkbox spacing ---- */
+.amplify-checkbox {
+  gap: 0.5rem;
+}
+
+/* ---- Info icon with tooltip ---- */
+.info-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  color: var(--amplify-colors-font-tertiary);
+  cursor: help;
+}
+
+.info-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 220px;
+  background: #232f3e;
+  color: #fff;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  padding: 0.5rem 0.65rem;
+  border-radius: 4px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.28);
+  white-space: normal;
+  z-index: 100;
+  pointer-events: none;
+}
+
+/* Arrow */
+.info-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #232f3e;
+}
+
+.info-icon:hover .info-tooltip {
+  display: block;
+}
+
+/* ---- Tabs: stronger active indicator ---- */
+[role="tab"][aria-selected="true"] {
+  font-weight: 600;
+  border-bottom-width: 3px !important;
+}
+
+/* ---- Buttons: cleaner focus ring ---- */
+.amplify-button:focus-visible {
+  outline: 2px solid var(--amplify-colors-brand-primary-60);
+  outline-offset: 2px;
+  box-shadow: none !important;
+}
+
+/* ---- Alert: tighter padding ---- */
+.amplify-alert {
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+  font-size: 0.875rem;
+}

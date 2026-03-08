@@ -4,13 +4,12 @@ import { describe, expect, it } from "vitest";
 import AudioUpload from "./AudioUpload";
 import { TranscriberProvider } from "../context/TranscriberContext";
 
-function renderWithProvider() {
-  return render(
+const renderWithProvider = () =>
+  render(
     <TranscriberProvider>
       <AudioUpload />
     </TranscriberProvider>,
   );
-}
 
 describe("AudioUpload", () => {
   it("shows placeholder text when no file is selected", () => {
