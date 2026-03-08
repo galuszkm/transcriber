@@ -28,9 +28,7 @@ class _CachedStaticFiles(StaticFiles):
         """Return response with cache-control header."""
         response = await super().get_response(path, scope)
         if response.status_code == 200:
-            response.headers["Cache-Control"] = (
-                f"public, max-age={_CACHE_MAX_AGE}"
-            )
+            response.headers["Cache-Control"] = f"public, max-age={_CACHE_MAX_AGE}"
         return response
 
 
