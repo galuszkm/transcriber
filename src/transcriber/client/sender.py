@@ -171,13 +171,21 @@ async def _ws_send(
     verify_ssl: bool,
 ) -> dict:
     """Async WebSocket implementation."""
-    ssl_ctx: ssl.SSLContext | bool = bool(verify_ssl)
     ws_url = url.replace("http://", "ws://").replace("https://", "wss://")
     ws_url = f"{ws_url}/ws/transcribe?diarize={'true' if diarize else 'false'}"
 
-    async with websockets.connect(
-        ws_url, ssl=ssl_ctx if ws_url.startswith("wss://") else None
-    ) as ws:
+    ssl_param: ssl.SSLContext | None
+    if ws_url.startswith("wss://"):
+        if verify_ssl:
+            ssl_param = ssl.create_default_context()
+        else:
+            ssl_param = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            ssl_param.check_hostname = False
+            ssl_param.verify_mode = ssl.CERT_NONE
+    else:
+        ssl_param = None
+
+    async with websockets.connect(ws_url, ssl=ssl_param) as ws:
         await ws.send(wav_bytes)
         raw = await ws.recv()
         data = json.loads(raw)
