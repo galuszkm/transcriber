@@ -161,4 +161,4 @@ def main() -> None:
 
     prefix = _normalize_prefix(args.prefix)
     app = create_app(config, prefix=prefix)
-    uvicorn.run(app, host=args.host, port=args.port, root_path=prefix)
+    uvicorn.run(app, host=args.host, port=args.port)
