@@ -1,0 +1,319 @@
+/* === Design tokens === */
+:root {
+  --aws-header-bg: #232f3e;
+  --aws-orange: #ff9900;
+  --aws-orange-dim: #e68a00;
+}
+
+/* ---- Reset ---- */
+html {
+  overflow-y: hidden;
+}
+
+body {
+  margin: 0;
+}
+
+body>div {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+/* ---- ThemeProvider root ---- */
+/* No padding here — header spans full width, padding lives in .app-shell */
+[data-amplify-theme] {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  background: var(--amplify-colors-background-secondary);
+  color: var(--amplify-colors-font-primary);
+  font-family: var(--amplify-fonts-default-variable, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+  line-height: 1.5;
+}
+
+/* ---- App header bar ---- */
+.app-header {
+  background: var(--aws-header-bg);
+  border-bottom: 3px solid var(--aws-orange);
+  flex-shrink: 0;
+}
+
+.app-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.25rem;
+  height: 3rem;
+}
+
+/* Heading always lives in the dark header */
+.app-heading {
+  color: #fff !important;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  border-left: 3px solid var(--aws-orange);
+  padding-left: 0.6rem;
+  margin: 0 !important;
+  line-height: 1.2;
+}
+
+/* Icon buttons inside the dark header */
+.app-header .icon-btn {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.app-header .icon-btn:hover {
+  color: #fff;
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ---- App shell (body below header) ---- */
+.app-shell {
+  flex: 1;
+  min-height: 0;
+  padding: 1rem 1.25rem;
+}
+
+/* ---- Two-column layout ---- */
+.two-col {
+  display: flex;
+  gap: 1.25rem;
+  flex: 1;
+  min-height: 0;
+  padding: 1rem;
+}
+
+.col-transcript {
+  flex: 7;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.col-sidebar {
+  flex: 3;
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  /* overflow-y: auto; */
+}
+
+/* ---- Cards ---- */
+/* Subtle lift in light mode */
+[data-amplify-color-mode="light"] .amplify-card[data-variation="outlined"] {
+  background: var(--amplify-colors-background-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), 0 0 0 1px var(--amplify-colors-border-primary);
+  border: none;
+}
+
+[data-amplify-color-mode="dark"] .amplify-card[data-variation="outlined"] {
+  background: var(--amplify-colors-background-primary);
+}
+
+/* Transcript card fills its column and scrolls internally */
+.transcript-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.transcript-card>[class*="flex"] {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.transcript-card [data-amplify-tabs] {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.transcript-card [role="tabpanel"] {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* ---- Upload area ---- */
+.upload-area {
+  border: 2px dashed var(--amplify-colors-border-primary, #d5dbdb);
+  border-radius: var(--amplify-radii-medium, 6px);
+  padding: 1.25rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s;
+  background: var(--amplify-colors-background-secondary, #f8f9fa);
+}
+
+.upload-area:hover {
+  border-color: var(--aws-orange);
+  background: var(--amplify-colors-background-primary, #fff);
+}
+
+/* ---- Recording badge ---- */
+.recording-badge {
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* ---- Transcript views ---- */
+.transcript-segments,
+.transcript-script {
+  max-height: 60vh;
+}
+
+.transcript-segments {
+  padding: 0.5rem 0;
+}
+
+.segment-row {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  align-items: baseline;
+  border-bottom: 1px solid var(--amplify-colors-border-tertiary, #eee);
+}
+
+.segment-row * {
+  font-size: 0.85rem !important;
+}
+
+.segment-row:last-child {
+  border-bottom: none;
+}
+
+.segment-time {
+  color: var(--amplify-colors-font-tertiary, #687078);
+  flex-shrink: 0;
+  min-width: 7rem;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.82rem;
+}
+
+.segment-speaker {
+  flex-shrink: 0;
+}
+
+.transcript-script {
+  padding: 0.5rem 0;
+}
+
+.script-block {
+  margin-bottom: 1.1rem;
+}
+
+.script-block:last-child {
+  margin-bottom: 0;
+}
+
+.script-speaker {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.78rem !important;
+  margin-bottom: 0.3rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 2px solid currentColor;
+  opacity: 0.9;
+}
+
+.script-text {
+  padding-left: 0.5rem;
+  line-height: 1.75;
+}
+
+/* Plain text view */
+.transcript-plain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.transcript-plain textarea {
+  flex: 1;
+  resize: none;
+  min-height: 200px;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 0.85rem;
+}
+
+/* ---- Audio player ---- */
+.audio-player-card audio {
+  border-radius: var(--amplify-radii-small, 4px);
+}
+
+/* ---- Status bar ---- */
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  color: var(--amplify-colors-font-tertiary, #666);
+}
+
+/* ---- Icon helpers ---- */
+.icon-inline {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem !important;
+}
+
+.btn-icon:focus {
+  box-shadow: none !important;
+}
+
+/* Bare icon buttons (theme toggle, GitHub link) */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0.3rem;
+  cursor: pointer;
+  color: inherit;
+  border-radius: var(--amplify-radii-small, 4px);
+  transition: color 0.15s, background 0.15s, opacity 0.15s;
+  text-decoration: none;
+}
+
+.icon-btn:hover {
+  opacity: 0.65;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+  .two-col {
+    flex-direction: column;
+  }
+
+  .col-sidebar {
+    min-width: unset;
+  }
+
+  .app-shell {
+    padding: 1rem;
+    height: auto;
+    overflow: visible;
+  }
+}

@@ -1,7 +1,7 @@
 [project]
 name = "transcriber"
 authors = [{ name = "Michal Galuszka" }]
-version = "0.2.0"
+version = "0.3.0"
 description = "Audio transcription tool using WhisperX for meeting recordings"
 requires-python = ">=3.11"
 

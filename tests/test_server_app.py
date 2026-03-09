@@ -24,6 +24,14 @@ class TestCreateApp:
         paths = [getattr(r, "path", "") for r in app.routes]
         assert "/health" in paths
 
+    def test_sagemaker_routes_registered(self) -> None:
+        """SageMaker /ping and /invocations endpoints are present."""
+        cfg = TranscriptionConfig(compute_type="float32", device="cpu")
+        app = create_app(cfg)
+        paths = [getattr(r, "path", "") for r in app.routes]
+        assert "/ping" in paths
+        assert "/invocations" in paths
+
 
 class TestServerParser:
     """Server CLI argument parser."""
@@ -31,8 +39,8 @@ class TestServerParser:
     def test_default_host_and_port(self) -> None:
         parser = _build_parser()
         args = parser.parse_args([])
-        assert args.host == "127.0.0.1"
-        assert args.port == 8000
+        assert args.host == "0.0.0.0"
+        assert args.port == 8080
 
     def test_custom_host_and_port(self) -> None:
         parser = _build_parser()

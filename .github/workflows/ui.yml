@@ -1,0 +1,34 @@
+name: UI Check & Test
+
+on:
+  pull_request:
+    paths:
+      - "ui/**"
+
+jobs:
+  ui:
+    name: UI Lint, Type-check & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: ui/package-lock.json
+
+      - uses: taiki-e/install-action@just
+
+      - name: Install dependencies
+        run: npm ci --prefix ui
+
+      - name: Lint
+        run: just ui-lint
+
+      - name: Type-check
+        run: just ui-typecheck
+
+      - name: Test
+        run: just ui-test

@@ -1,21 +1,81 @@
 # Transcriber
 
-Local audio transcription tool powered by **WhisperX**. Transcribes meeting recordings with word-level timestamps and optional speaker diarization. Everything runs locally — no data leaves your machine.
+**Transcriber** is a local audio transcription tool powered by **WhisperX**. It transcribes recordings with word-level timestamps and optional speaker diarization. Everything runs locally — no audio ever leaves your machine.
 
-## Features
+It ships as three complementary interfaces built on the same ML core: a **React web application** served by a FastAPI inference server, a **command-line tool** for batch processing, and an importable **Python client library** designed for GUI apps and remote-machine workflows.
 
-- **WhisperX-powered** transcription with automatic language detection
-- **Speaker diarization** — identifies who said what (optional, requires free HuggingFace token; word-level alignment runs automatically when enabled)
-- **Multiple interfaces** — CLI for files, HTTP/WebSocket server for real-time apps, importable client library for GUI apps and scripts
-- **Markdown & JSON output** — clean transcript ready to pass to an LLM for summarization
-- **Configurable models** — tiny through large-v3, CPU or CUDA
-- **Cache management** — pre-download models and check cache status for fully offline operation
-- **`.env` configuration** — all settings configurable via environment variables
+<div align="center">
+<img width="800" src="./assets/demo.png" alt="Demo" />
+</div>
+
+### Key features
+
+- **WhisperX-powered ASR** — automatic language detection, supports `tiny` through `large-v3` model sizes
+- **Speaker diarization** — pyannote identifies who said what; word-level forced alignment runs automatically; custom re-segmentation ensures every segment belongs to exactly one speaker; graceful fallback on failure
+- **React web UI** — drag-and-drop upload, browser microphone recording, real-time SSE progress, three transcript views (segments, script, plain text), copy/download menus, dark mode, PWA-ready
+- **Multiple server interfaces** — REST multipart and raw-bytes endpoints, SSE streaming variants, WebSocket
+- **Markdown & JSON output** — speaker-grouped transcript ready to paste into an LLM for summarization
+- **Lightweight client library** — non-blocking microphone recorder + REST/SSE/WebSocket sender; no ML dependency; designed for PySide6 / Tkinter / script workflows
+- **CPU or CUDA** — auto-detected compute type; float16/int8/float32 precision
+- **Fully offline after first run** — pre-download all models with `trans-cache`
+- **AWS SageMaker–ready** — container satisfies the BYOC contract out of the box (`/ping`, `/invocations`, port 8080); supports real-time and asynchronous endpoints
+
+
+---
+
+## TL;DR — pick your workflow
+
+### 1. End-to-end web app (server + React UI)
+
+Run the inference server once, open a browser, and you're done. The built React UI is served automatically.
+
+```bash
+uv sync --extra server
+uv run trans-server        # GPU + large-v3 on 0.0.0.0:8080
+# open http://localhost:8080
+```
+
+Drag-and-drop an audio file (or record straight from the browser microphone), tick **Diarize** if you want speaker labels, and hit **Transcribe**. Results stream in live via SSE.
+
+### 2. CLI — batch transcription
+
+```bash
+uv sync --extra cli
+uv run trans-cli meeting.mp3 --diarize -f md
+```
+
+### 3. Remote client — server on powerful hardware, client anywhere
+
+Deploy the server on a GPU machine (or SageMaker) and use the lightweight `client` library from any laptop — no ML stack required on the client side.
+
+```bash
+# On the GPU machine:
+uv sync --extra server ; uv run trans-server
+
+# On the remote machine:
+uv sync --extra client
+```
+
+```python
+from transcriber.client import start_recording, stop_recording, transcribe_sse
+
+start_recording()
+input("Recording… press Enter to stop")
+wav = stop_recording()
+result = transcribe_sse(wav, url="http://gpu-machine:8080", diarize=True)
+print(result["transcript"])
+```
+
+### 4. AWS SageMaker deployment
+
+Build the Docker image once, push to ECR, and deploy as a real-time or asynchronous endpoint. See **[SAGEMAKER.md](SAGEMAKER.md)** for the full guide.
+
+---
 
 
 ## Architecture
 
-The code is split into four sub-packages. The boundary rule is simple: ML model calls stay in `pipeline/`, data movement stays in `io/`, shared types and config stay in `core/`, and everything the user directly interacts with stays in `cli/`. This means replacing WhisperX with a different backend only touches `pipeline/`.
+The code is split into six sub-packages with a strict layering rule: ML model calls stay in `pipeline/`, data movement stays in `io/`, shared types and config stay in `core/`, user-facing interfaces stay in `cli/` and `server/`, and the lightweight network client lives in `client/`. This means replacing WhisperX with a different backend only touches `pipeline/`.
 
 ### Sub-packages
 
@@ -284,7 +344,7 @@ uv run trans-cli meeting.mp3 -f json -o ./transcripts/meeting
 HTTP/WebSocket server for integrating transcription into other applications. Runs a single-GPU inference worker with a FIFO queue.
 
 ```bash
-# Start server (defaults: cuda, large-v3, port 8000)
+# Start server (defaults: cuda, large-v3, 0.0.0.0:8080)
 uv run trans-server
 
 # Custom port and model
@@ -298,8 +358,9 @@ uv run trans-server -d cpu --port 9876
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--host` | Bind address | `127.0.0.1` |
-| `--port` | Port number | `8000` |
+| `--host` | Bind address | `0.0.0.0` |
+| `--port` | Port number | `8080` |
+| `--prefix PATH` | URL prefix for routes behind a reverse proxy | `""` |
 | `-m, --model` | Whisper model size | `large-v3` |
 | `-d, --device` | Compute device | `cuda` |
 | `-c, --compute-type` | Precision | `auto` |
@@ -371,6 +432,36 @@ WS /ws/transcribe?diarize=true
 
 Send binary audio frame → receive JSON response. Connection stays open for multiple exchanges.
 
+### React web UI
+
+The server automatically serves a built React application when the `server/static/` directory is present. Build it once before starting the server:
+
+```bash
+# Windows
+.\ui\build.bat
+
+# Linux / macOS
+./ui/build.sh
+```
+
+Then start the server normally (`uv run trans-server`). Open `http://localhost:8080` in a browser.
+
+#### UI features
+
+| Feature | Details |
+|---------|---------|
+| **File upload** | Drag-and-drop or click-to-browse; accepts all supported audio formats |
+| **Microphone recording** | Uses the browser's `MediaRecorder` API; shows elapsed timer + REC badge; auto-stops at 5 minutes |
+| **Audio preview** | Inline HTML5 player shown once a file is selected |
+| **Options** | Diarize checkbox, Auto-copy toggle |
+| **SSE progress** | Live progress messages stream in during transcription (load → transcribe → align → diarize) |
+| **Transcript views** | Three tabs: **Segments** (timestamped table with colour-coded speakers), **Script** (movie-script grouped by speaker), **Plain text** |
+| **Copy / Download** | Menus for plain text, Markdown, segments JSON, full JSON; `.txt`, `.md`, `.json` downloads |
+| **Dark mode** | Light/dark toggle persisted to `localStorage`; follows AWS Amplify theme |
+| **PWA** | Service-worker registered; can be installed as a standalone app |
+
+The app resolves API base URLs from `window.__SERVER_CONFIG__` injected into `index.html` at serve time, so it works correctly behind any reverse proxy or non-root prefix.
+
 ### Client library
 
 A lightweight, importable library for recording audio and sending it to the server. No ML dependencies — install with the `client` extra:
@@ -419,7 +510,7 @@ wav = stop_recording()
 
 result = transcribe_sse(
     wav,
-    url="http://localhost:8000",
+    url="http://localhost:8080",
     diarize=True,
     on_progress=lambda stage, msg: print(f"[{stage}] {msg}"),
 )
@@ -438,6 +529,17 @@ print(result["transcript"])
 | `transcribe_sse(wav_bytes, *, url, diarize, timeout, on_progress)` | Stream via SSE; calls `on_progress(stage, message)` for each progress event; returns parsed result dict — prefer over REST for large files |
 | `transcribe_ws(wav_bytes, *, url, diarize)` | Send over WebSocket; returns parsed result dict |
 | `RecordingError` | Raised on invalid operations (already recording, not recording) |
+
+
+## Cloud Deployment (AWS SageMaker)
+
+The server is ready to deploy on AWS SageMaker as a **Bring Your Own Container (BYOC)** endpoint — port 8080 and `0.0.0.0` binding are the defaults. A `Dockerfile` and entrypoint script are included at the repository root.
+
+See **[SAGEMAKER.md](SAGEMAKER.md)** for the full deployment guide covering:
+- Building and pushing the Docker image to ECR
+- Real-time endpoints (≤ 60 s, ≤ 25 MB)
+- Asynchronous endpoints (up to 1 hour, up to 1 GB payload)
+- boto3 examples for model creation, endpoint deployment, and invocation
 
 
 ## Development

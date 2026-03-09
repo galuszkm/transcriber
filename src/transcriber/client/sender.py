@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import ssl
 from collections.abc import Callable, Iterator
 
 import httpx
@@ -30,6 +31,7 @@ def transcribe_rest(
     url: str = DEFAULT_URL,
     diarize: bool = False,
     timeout: float = _TIMEOUT,
+    verify_ssl: bool = True,
 ) -> dict:
     """Send audio via REST and return the transcription result.
 
@@ -38,6 +40,8 @@ def transcribe_rest(
         url: Base URL of the transcription service.
         diarize: Whether to enable speaker diarization.
         timeout: Request timeout in seconds.
+        verify_ssl: Verify the server's TLS certificate. Set to ``False``
+            to skip validation (e.g. self-signed certs).
 
     Returns:
         Parsed JSON response dict.
@@ -46,7 +50,9 @@ def transcribe_rest(
     files = {"file": ("recording.wav", wav_bytes, "audio/wav")}
     params = {"diarize": str(diarize).lower()}
 
-    resp = httpx.post(endpoint, files=files, params=params, timeout=timeout)
+    resp = httpx.post(
+        endpoint, files=files, params=params, timeout=timeout, verify=verify_ssl
+    )
     resp.raise_for_status()
     return resp.json()
 
@@ -58,6 +64,7 @@ def transcribe_sse(
     diarize: bool = False,
     timeout: float = _TIMEOUT,
     on_progress: Callable[[str, str], None] | None = None,
+    verify_ssl: bool = True,
 ) -> dict:
     """Send audio via SSE streaming and return the transcription result.
 
@@ -73,6 +80,8 @@ def transcribe_sse(
         timeout: Connection + read timeout in seconds.
         on_progress: Optional callback invoked for each ``progress`` event
             with ``(stage, message)`` arguments.
+        verify_ssl: Verify the server's TLS certificate. Set to ``False``
+            to skip validation (e.g. self-signed certs).
 
     Returns:
         Parsed JSON result dict (same shape as :func:`transcribe_rest`).
@@ -90,6 +99,7 @@ def transcribe_sse(
         headers={"Content-Type": "application/octet-stream"},
         params=params,
         timeout=timeout,
+        verify=verify_ssl,
     ) as resp:
         resp.raise_for_status()
         return _parse_sse(resp.iter_lines(), on_progress=on_progress)
@@ -131,6 +141,7 @@ def transcribe_ws(
     *,
     url: str = DEFAULT_URL,
     diarize: bool = False,
+    verify_ssl: bool = True,
 ) -> dict:
     """Send audio via WebSocket and return the transcription result.
 
@@ -138,6 +149,8 @@ def transcribe_ws(
         wav_bytes: WAV file bytes.
         url: Base URL (``http://`` or ``https://``).
         diarize: Whether to enable speaker diarization.
+        verify_ssl: Verify the server's TLS certificate. Set to ``False``
+            to skip validation (e.g. self-signed certs).
 
     Returns:
         Parsed JSON response dict.
@@ -145,7 +158,9 @@ def transcribe_ws(
     Raises:
         RuntimeError: If the server returns an error status.
     """
-    return asyncio.run(_ws_send(wav_bytes, url=url, diarize=diarize))
+    return asyncio.run(
+        _ws_send(wav_bytes, url=url, diarize=diarize, verify_ssl=verify_ssl)
+    )
 
 
 async def _ws_send(
@@ -153,12 +168,24 @@ async def _ws_send(
     *,
     url: str,
     diarize: bool,
+    verify_ssl: bool,
 ) -> dict:
     """Async WebSocket implementation."""
     ws_url = url.replace("http://", "ws://").replace("https://", "wss://")
     ws_url = f"{ws_url}/ws/transcribe?diarize={'true' if diarize else 'false'}"
 
-    async with websockets.connect(ws_url) as ws:
+    ssl_param: ssl.SSLContext | None
+    if ws_url.startswith("wss://"):
+        if verify_ssl:
+            ssl_param = ssl.create_default_context()
+        else:
+            ssl_param = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            ssl_param.check_hostname = False
+            ssl_param.verify_mode = ssl.CERT_NONE
+    else:
+        ssl_param = None
+
+    async with websockets.connect(ws_url, ssl=ssl_param) as ws:
         await ws.send(wav_bytes)
         raw = await ws.recv()
         data = json.loads(raw)
