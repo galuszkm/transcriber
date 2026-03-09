@@ -59,21 +59,20 @@ export const TranscriberProvider = ({ children }: { children: ReactNode }) => {
   const [isRecording, setIsRecording] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  // persisted settings — initialised from localStorage once
-  const _s = loadSettings();
-  const [diarize, setDiarize] = useState(_s.diarize);
-  const [autoCopy, setAutoCopy] = useState(_s.autoCopy);
-  const [transcriptCollapsed, setTranscriptCollapsed] = useState(_s.transcriptCollapsed);
-  const [showDropzone, setShowDropzone] = useState(_s.showDropzone);
-  const [darkMode, setDarkMode] = useState(_s.darkMode);
+  // persisted settings — single lazy initialiser reads localStorage exactly once on mount
+  const [settings, _setSettings] = useState<PersistedSettings>(loadSettings);
+  const { diarize, autoCopy, transcriptCollapsed, showDropzone, darkMode } = settings;
+
+  const setDiarize = useCallback((v: boolean) => _setSettings(s => ({ ...s, diarize: v })), []);
+  const setAutoCopy = useCallback((v: boolean) => _setSettings(s => ({ ...s, autoCopy: v })), []);
+  const setTranscriptCollapsed = useCallback((v: boolean) => _setSettings(s => ({ ...s, transcriptCollapsed: v })), []);
+  const setShowDropzone = useCallback((v: boolean) => _setSettings(s => ({ ...s, showDropzone: v })), []);
+  const setDarkMode = useCallback((v: boolean) => _setSettings(s => ({ ...s, darkMode: v })), []);
 
   // persist settings whenever any of them change
   useEffect(() => {
-    localStorage.setItem(
-      SETTINGS_KEY,
-      JSON.stringify({ diarize, autoCopy, transcriptCollapsed, showDropzone, darkMode }),
-    );
-  }, [diarize, autoCopy, transcriptCollapsed, showDropzone, darkMode]);
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  }, [settings]);
 
   /** Upload the audio file and start transcription via SSE streaming. */
   const submit = useCallback(() => {
