@@ -126,6 +126,11 @@ async def invocations(request: Request) -> UTF8JSONResponse | JSONResponse:
 
     if "application/json" in content_type:
         body = await request.json()
+        if not isinstance(body, dict):
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "JSON body must be an object."},
+            )
         audio_b64 = body.get("audio_base64")
         if not audio_b64:
             return JSONResponse(

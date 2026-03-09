@@ -127,6 +127,17 @@ class TestInvocationsEndpoint:
         assert resp.status_code == 400
         assert "Empty request body" in resp.json()["detail"]
 
+    def test_json_non_dict_body_returns_400(self) -> None:
+        app = _make_test_app()
+        client = TestClient(app)
+        resp = client.post(
+            "/invocations",
+            content=b'["not", "a", "dict"]',
+            headers={"Content-Type": "application/json"},
+        )
+        assert resp.status_code == 400
+        assert "object" in resp.json()["detail"]
+
     def test_json_missing_audio_base64_returns_400(self) -> None:
         app = _make_test_app()
         client = TestClient(app)
