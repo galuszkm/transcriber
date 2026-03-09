@@ -132,7 +132,15 @@ async def invocations(request: Request) -> UTF8JSONResponse | JSONResponse:
                 status_code=400,
                 content={"detail": "JSON body must include 'audio_base64' field."},
             )
-        diarize = diarize or body.get("diarize", False)
+        # Normalize diarize flag from JSON body to a strict boolean.
+        body_diarize_raw = body.get("diarize", None)
+        if isinstance(body_diarize_raw, bool):
+            body_diarize = body_diarize_raw
+        elif isinstance(body_diarize_raw, str):
+            body_diarize = body_diarize_raw.lower() in {"true", "1", "yes"}
+        else:
+            body_diarize = False
+        diarize = diarize or body_diarize
         audio = decode_base64_audio(audio_b64)
         label = "<invocations-json>"
     elif "application/octet-stream" in content_type:
