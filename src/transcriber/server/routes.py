@@ -137,6 +137,17 @@ async def invocations(request: Request) -> UTF8JSONResponse | JSONResponse:
         label = "<invocations-json>"
     elif "application/octet-stream" in content_type:
         raw_bytes = await request.body()
+        if not raw_bytes:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "detail": (
+                        "Empty request body. Send audio as raw bytes "
+                        "(application/octet-stream), JSON with 'audio_base64', "
+                        "or multipart form with 'file' field."
+                    )
+                },
+            )
         audio = decode_audio_bytes(raw_bytes)
         label = "<invocations-raw>"
     elif "multipart/form-data" in content_type:
