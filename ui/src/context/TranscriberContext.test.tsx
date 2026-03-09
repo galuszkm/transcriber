@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { renderHook, act } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -5,7 +6,7 @@ import {
   useTranscriber,
 } from "./TranscriberContext";
 
-const wrapper = ({ children }: { children: React.ReactNode }) => (
+const wrapper = ({ children }: { children: ReactNode }) => (
   <TranscriberProvider>{children}</TranscriberProvider>
 );
 
