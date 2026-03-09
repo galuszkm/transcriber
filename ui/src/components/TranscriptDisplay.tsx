@@ -38,8 +38,11 @@ export default function TranscriptDisplay() {
     </>
   );
 
+  // Coerce view to a valid tab: "script" is only valid when hasSpeakers is true.
+  const effectiveView: TranscriptView = !hasSpeakers && view === "script" ? "segments" : view;
+
   const renderTabs = () => (
-    <Tabs.Container value={view} onValueChange={(val) => setView(val as TranscriptView)}>
+    <Tabs.Container value={effectiveView} onValueChange={(val) => setView(val as TranscriptView)}>
       <Tabs.List>
         <Tabs.Item value="segments">Segments</Tabs.Item>
         {hasSpeakers && <Tabs.Item value="script">Script</Tabs.Item>}
